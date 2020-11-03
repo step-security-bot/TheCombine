@@ -34,10 +34,12 @@ interface ReviewEntriesProps {
 
 interface ReviewEntriesState {
   loaded: boolean;
+  rowCount: number;
 }
 
 // Constants
 const ROWS_PER_PAGE: number[] = [10, 100, 1000];
+const tableRef: React.RefObject<any> = React.createRef();
 
 export class ReviewEntriesComponent extends React.Component<
   ReviewEntriesProps & LocalizeContextProps,
@@ -47,7 +49,10 @@ export class ReviewEntriesComponent extends React.Component<
 
   constructor(props: ReviewEntriesProps & LocalizeContextProps) {
     super(props);
-    this.state = { loaded: false };
+    this.state = {
+      loaded: false,
+      rowCount: props.words.length,
+    };
     this.recorder = new Recorder();
     this.props.clearState();
     this.props.setAnalysisLanguage();
@@ -77,6 +82,20 @@ export class ReviewEntriesComponent extends React.Component<
     return [...new Set(array)];
   }
 
+  private getPageSizeOptions(): number[] {
+    const pageSizeOptions = ROWS_PER_PAGE.map((value) =>
+      Math.min(value, this.state.rowCount)
+    );
+    return this.removeDuplicates(pageSizeOptions);
+  }
+
+  private updatePageSizeOptions() {
+    const rowCount = tableRef.current?.state.data.length ?? 0;
+    if (rowCount !== this.state.rowCount) {
+      this.setState({ rowCount });
+    }
+  }
+
   render() {
     return (
       this.state.loaded && (
@@ -88,10 +107,27 @@ export class ReviewEntriesComponent extends React.Component<
               style={{ marginTop: theme.spacing(1) }}
             >
               <MaterialTable<any>
+                tableRef={tableRef}
                 icons={tableIcons}
                 title={<Translate id={"reviewEntries.title"} />}
                 columns={columns}
                 data={this.props.words}
+                /*onChangeRowsPerPage={(pageSize) => {
+                  if (
+                    tableRef.current &&
+                    pageSize > tableRef.current.state.data.length
+                  ) {
+                    tableRef.current.state.pageSize =
+                      tableRef.current.state.data.length;
+                  }
+                  /*const doc = document.getElementById("reviewEntries.title");
+                  if (doc) {
+                    doc.scrollIntoView();
+                  }
+                }}*/
+                onFilterChange={() => {
+                  this.updatePageSizeOptions();
+                }}
                 editable={{
                   onRowUpdate: (
                     newData: ReviewEntriesWord,
@@ -119,16 +155,12 @@ export class ReviewEntriesComponent extends React.Component<
                     }),
                 }}
                 options={{
+                  debounceInterval: 500,
                   filtering: true,
                   pageSize:
-                    this.props.words.length > 0
-                      ? Math.min(this.props.words.length, ROWS_PER_PAGE[0])
-                      : ROWS_PER_PAGE[0],
-                  pageSizeOptions: this.removeDuplicates([
-                    Math.min(this.props.words.length, ROWS_PER_PAGE[0]),
-                    Math.min(this.props.words.length, ROWS_PER_PAGE[1]),
-                    Math.min(this.props.words.length, ROWS_PER_PAGE[2]),
-                  ]),
+                    Math.min(this.state.rowCount, ROWS_PER_PAGE[0]) ||
+                    ROWS_PER_PAGE[0],
+                  pageSizeOptions: this.getPageSizeOptions(),
                 }}
               />
             </Typography>
