@@ -112,19 +112,6 @@ export class ReviewEntriesComponent extends React.Component<
                 title={<Translate id={"reviewEntries.title"} />}
                 columns={columns}
                 data={this.props.words}
-                /*onChangeRowsPerPage={(pageSize) => {
-                  if (
-                    tableRef.current &&
-                    pageSize > tableRef.current.state.data.length
-                  ) {
-                    tableRef.current.state.pageSize =
-                      tableRef.current.state.data.length;
-                  }
-                  /*const doc = document.getElementById("reviewEntries.title");
-                  if (doc) {
-                    doc.scrollIntoView();
-                  }
-                }}*/
                 onFilterChange={() => {
                   this.updatePageSizeOptions();
                 }}
