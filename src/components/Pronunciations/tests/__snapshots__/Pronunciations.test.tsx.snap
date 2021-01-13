@@ -1,12 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`pronunciation tests displays buttons 1`] = `
-<div
-  className="pronunciationAudio"
->
+exports[`Pronunciations displays buttons 1`] = `
+Array [
   <button
+    aria-describedby={null}
     aria-label="record"
-    className="MuiButtonBase-root MuiIconButton-root makeStyles-button-6"
+    className="MuiButtonBase-root MuiIconButton-root makeStyles-button-1"
     disabled={false}
     id="recordingButton"
     onBlur={[Function]}
@@ -16,11 +15,13 @@ exports[`pronunciation tests displays buttons 1`] = `
     onKeyUp={[Function]}
     onMouseDown={[Function]}
     onMouseLeave={[Function]}
+    onMouseOver={[Function]}
     onMouseUp={[Function]}
     onTouchEnd={[Function]}
     onTouchMove={[Function]}
     onTouchStart={[Function]}
     tabIndex={-1}
+    title={null}
     type="button"
   >
     <span
@@ -28,7 +29,7 @@ exports[`pronunciation tests displays buttons 1`] = `
     >
       <svg
         aria-hidden={true}
-        className="MuiSvgIcon-root makeStyles-iconRelease-8"
+        className="MuiSvgIcon-root makeStyles-iconRelease-3"
         focusable="false"
         id="icon"
         viewBox="0 0 24 24"
@@ -43,7 +44,7 @@ exports[`pronunciation tests displays buttons 1`] = `
     <span
       className="MuiTouchRipple-root"
     />
-  </button>
+  </button>,
   <button
     aria-describedby={null}
     aria-label="play"
@@ -83,7 +84,7 @@ exports[`pronunciation tests displays buttons 1`] = `
     <span
       className="MuiTouchRipple-root"
     />
-  </button>
+  </button>,
   <button
     aria-describedby={null}
     aria-label="play"
@@ -123,6 +124,6 @@ exports[`pronunciation tests displays buttons 1`] = `
     <span
       className="MuiTouchRipple-root"
     />
-  </button>
-</div>
+  </button>,
+]
 `;

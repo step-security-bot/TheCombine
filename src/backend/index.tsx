@@ -1,21 +1,22 @@
 import axios from "axios";
 
 import authHeader from "../components/Login/AuthHeaders";
-import history from "../history";
-import { Goal, GoalType } from "../types/goals";
+import history, { Path } from "../history";
+import { Goal } from "../types/goals";
 import { Project } from "../types/project";
 import { RuntimeConfig } from "../types/runtimeConfig";
+import SemanticDomainWithSubdomains from "../types/SemanticDomain";
 import { User } from "../types/user";
 import { UserEdit } from "../types/userEdit";
-import SemanticDomainWithSubdomains from "../types/SemanticDomain";
 import { UserRole } from "../types/userRole";
 import { MergeWord, Word } from "../types/word";
 import * as LocalStorage from "./localStorage";
 
-const baseURL = `${RuntimeConfig.getInstance().baseUrl()}/v1`;
+export const baseURL = `${RuntimeConfig.getInstance().baseUrl()}`;
+const apiBaseURL = `${baseURL}/v1`;
 
 const backendServer = axios.create({
-  baseURL,
+  baseURL: apiBaseURL,
 });
 
 backendServer.interceptors.response.use(
@@ -28,7 +29,7 @@ backendServer.interceptors.response.use(
   },
   (err) => {
     if (err.response && err.response.status === 401) {
-      history.push("/login");
+      history.push(Path.Login);
     }
     return Promise.reject(err);
   }
@@ -120,15 +121,7 @@ export async function updateWord(word: Word): Promise<Word> {
   return { ...word, id: resp.data };
 }
 
-export async function deleteWord(word: Word): Promise<Word> {
-  let resp = await backendServer.delete(
-    `projects/${LocalStorage.getProjectId()}/words/${word.id}`,
-    { headers: authHeader() }
-  );
-  return { ...word, id: resp.data };
-}
-
-export async function deleteWordById(id: string): Promise<string> {
+export async function deleteWord(id: string): Promise<string> {
   let resp = await backendServer.delete(
     `projects/${LocalStorage.getProjectId()}/words/${id}`,
     { headers: authHeader() }
@@ -268,6 +261,10 @@ export async function getProject(id?: string): Promise<Project> {
   return resp.data;
 }
 
+export async function getProjectName(id?: string): Promise<string> {
+  return (await getProject(id)).name;
+}
+
 export async function updateProject(project: Project) {
   let resp = await backendServer.put(`projects/${project.id}`, project, {
     headers: authHeader(),
@@ -322,15 +319,31 @@ export async function uploadLift(
   return parseInt(resp.toString());
 }
 
-export async function exportLift(projectId?: string) {
-  let projectIdToExport = projectId ? projectId : LocalStorage.getProjectId();
-  let resp = await backendServer.get(
-    `projects/${projectIdToExport}/words/download`,
-    {
-      headers: { ...authHeader(), Accept: "application/zip" },
-    }
+// Tell the backend to create a LIFT file for the project
+export async function exportLift(projectId: string) {
+  let resp = await backendServer.get(`projects/${projectId}/words/export`, {
+    headers: authHeader(),
+  });
+  return resp.data;
+}
+// After the backend confirms that a LIFT file is ready, download it
+export async function downloadLift(projectId: string): Promise<string> {
+  // For details on how to download binary files with axios, see:
+  //    https://github.com/axios/axios/issues/1392#issuecomment-447263985
+  let resp = await backendServer.get(`projects/${projectId}/words/download`, {
+    headers: { ...authHeader(), Accept: "application/zip" },
+    responseType: "blob",
+  });
+  return URL.createObjectURL(
+    new Blob([resp.request.response], { type: "application/zip" })
   );
-  return `data:application/zip;base64,${resp.data}`;
+}
+// After downloading a LIFT file, clear it from the backend
+export async function deleteLift(projectId?: string) {
+  let projectIdToDelete = projectId ? projectId : LocalStorage.getProjectId();
+  await backendServer.get(`projects/${projectIdToDelete}/words/deleteexport`, {
+    headers: authHeader(),
+  });
 }
 
 export async function uploadAudio(
@@ -361,7 +374,7 @@ export async function deleteAudio(
 }
 
 export function getAudioUrl(wordId: string, fileName: string): string {
-  return `${baseURL}/projects/${LocalStorage.getProjectId()}/words/${wordId}/download/audio/${fileName}`;
+  return `${apiBaseURL}/projects/${LocalStorage.getProjectId()}/words/${wordId}/download/audio/${fileName}`;
 }
 
 export async function uploadAvatar(userId: string, img: File): Promise<string> {
@@ -392,11 +405,13 @@ export async function addGoalToUserEdit(
   userEditId: string,
   goal: Goal
 ): Promise<Goal> {
-  let goalType: string = goalNameToGoalTypeId(goal.name);
-  let stepData: string = JSON.stringify(goal.steps);
-  let userEditTuple = { goalType: goalType, stepData: [stepData] };
-  let projectId: string = LocalStorage.getProjectId();
-  let resp = await backendServer.post(
+  const stepData = JSON.stringify(goal.steps);
+  const userEditTuple = {
+    goalType: goal.goalType.toString(),
+    stepData: [stepData],
+  };
+  const projectId = LocalStorage.getProjectId();
+  const resp = await backendServer.post(
     `projects/${projectId}/useredits/${userEditId}`,
     userEditTuple,
     {
@@ -408,11 +423,11 @@ export async function addGoalToUserEdit(
 
 export async function addStepToGoal(
   userEditId: string,
-  indexInHistory: number,
+  goalIndex: number,
   goal: Goal
 ): Promise<Goal> {
-  let stepData: string = JSON.stringify(goal.steps);
-  let userEditTuple = { goalIndex: indexInHistory, newEdit: stepData };
+  const newEdit = JSON.stringify(goal.steps);
+  const userEditTuple = { goalIndex, newEdit };
   return await backendServer
     .put(
       `projects/${LocalStorage.getProjectId()}/useredits/${userEditId}`,
@@ -424,41 +439,6 @@ export async function addStepToGoal(
     .then((resp) => {
       return resp.data;
     });
-}
-
-function goalNameToGoalTypeId(goalName: string): string {
-  let goalType: number;
-  switch (goalName) {
-    case "charInventory":
-      goalType = GoalType.CreateCharInv;
-      break;
-    case "validateChars":
-      goalType = GoalType.ValidateChars;
-      break;
-    case "createStrWordInv":
-      goalType = GoalType.CreateStrWordInv;
-      break;
-    case "validateStrWords":
-      goalType = GoalType.ValidateStrWords;
-      break;
-    case "mergeDups":
-      goalType = GoalType.MergeDups;
-      break;
-    case "spellCheckGloss":
-      goalType = GoalType.SpellcheckGloss;
-      break;
-    case "reviewEntries":
-      goalType = GoalType.ReviewEntries;
-      break;
-    case "handleFlags":
-      goalType = GoalType.HandleFlags;
-      break;
-    default:
-      goalType = 8;
-      break;
-  }
-
-  return goalType.toString();
 }
 
 export async function createUserEdit(): Promise<Object> {

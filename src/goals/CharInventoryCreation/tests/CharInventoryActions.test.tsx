@@ -76,11 +76,9 @@ jest.mock("../../../backend", () => ({
   updateProject: jest.fn((_project: Project) => {
     return Promise.resolve("projectId");
   }),
-  addStepToGoal: jest.fn(
-    (_userEditId: string, _indexInHistory: number, _goal: Goal) => {
-      return Promise.resolve(mockGoal);
-    }
-  ),
+  addStepToGoal: jest.fn(() => {
+    return Promise.resolve(mockGoal);
+  }),
 }));
 
 const mockGoal: Goal = new CreateCharInv();
@@ -95,8 +93,8 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  LocalStorage.remove(LocalStorage.localStorageKeys.projectId);
-  LocalStorage.remove(LocalStorage.localStorageKeys.user);
+  LocalStorage.remove(LocalStorage.LocalStorageKey.ProjectId);
+  LocalStorage.remove(LocalStorage.LocalStorageKey.User);
 });
 
 afterEach(() => {

@@ -24,15 +24,21 @@ namespace BackendFramework.Services
         }
 
         /// <summary> Finds <see cref="Word"/> with specified wordId and projectId </summary>
-        public async Task<Word> GetWord(string projectId, string wordId)
+        public async Task<Word?> GetWord(string projectId, string wordId)
         {
             var filterDef = new FilterDefinitionBuilder<Word>();
             var filter = filterDef.And(filterDef.Eq(
                 x => x.ProjectId, projectId), filterDef.Eq(x => x.Id, wordId));
 
             var wordList = await _wordDatabase.Words.FindAsync(filter);
-
-            return wordList.FirstOrDefault();
+            try
+            {
+                return await wordList.FirstAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
         }
 
         /// <summary> Removes all <see cref="Word"/>s from the WordsCollection and Frontier for specified
@@ -61,14 +67,14 @@ namespace BackendFramework.Services
 
         internal static void PopulateWordGuids(Word word)
         {
-            if (word.Guid == null || Guid.Empty.Equals(word.Guid))
+            if (word.Guid is null || Guid.Empty.Equals(word.Guid))
             {
                 word.Guid = Guid.NewGuid();
             }
 
             foreach (var sense in word.Senses)
             {
-                if (sense.Guid == null || Guid.Empty.Equals(sense.Guid))
+                if (sense.Guid is null || Guid.Empty.Equals(sense.Guid))
                 {
                     sense.Guid = Guid.NewGuid();
                 }

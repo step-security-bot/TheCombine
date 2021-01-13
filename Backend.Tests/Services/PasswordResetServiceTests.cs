@@ -9,9 +9,9 @@ namespace Backend.Tests.Services
 {
     public class PasswordResetServiceTests
     {
-        private IUserService _userService;
-        private PasswordResetContextMock _passwordResets;
-        private IPasswordResetService _passwordResetService;
+        private IUserService _userService = null!;
+        private PasswordResetContextMock _passwordResets = null!;
+        private IPasswordResetService _passwordResetService = null!;
 
         [SetUp]
         public void Setup()
@@ -25,7 +25,7 @@ namespace Backend.Tests.Services
         public void CreateRequest()
         {
             // test we can successfully create a request
-            var user = new User() { Email = "user@domain.com" };
+            var user = new User { Email = "user@domain.com" };
             _userService.Create(user);
 
             var res = _passwordResetService.CreatePasswordReset("user@domain.com").Result;
@@ -35,7 +35,7 @@ namespace Backend.Tests.Services
         [Test]
         public void ResetSuccess()
         {
-            var user = new User() { Email = "user@domain.com" };
+            var user = new User { Email = "user@domain.com" };
             _userService.Create(user);
 
             var request = _passwordResetService.CreatePasswordReset("user@domain.com").Result;
@@ -46,7 +46,7 @@ namespace Backend.Tests.Services
         [Test]
         public void ResetExpired()
         {
-            var user = new User() { Email = "user@domain.com" };
+            var user = new User { Email = "user@domain.com" };
             _userService.Create(user);
 
             var request = _passwordResetService.CreatePasswordReset("user@domain.com").Result;
@@ -58,11 +58,14 @@ namespace Backend.Tests.Services
         [Test]
         public void ResetBadToken()
         {
-            var user = new User() { Email = "user@domain.com" };
+            const string email = "user@domain.com";
+            var user = new User { Email = email };
             _userService.Create(user);
 
             var request = _passwordResetService.CreatePasswordReset("user@domain.com").Result;
-            Assert.IsFalse(_passwordResetService.ResetPassword("NotARealToken", "newPassword").Result);
+            Assert.That(request.Email == email);
+            var task = _passwordResetService.ResetPassword("NotARealToken", "newPassword");
+            Assert.IsFalse(task.Result);
         }
     }
 }

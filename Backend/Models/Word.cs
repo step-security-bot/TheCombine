@@ -59,6 +59,9 @@ namespace BackendFramework.Models
         [BsonElement("projectId")]
         public string ProjectId { get; set; }
 
+        [BsonElement("note")]
+        public Note Note { get; set; }
+
         public Word()
         {
             Id = "";
@@ -75,39 +78,41 @@ namespace BackendFramework.Models
             EditedBy = new List<string>();
             History = new List<string>();
             Senses = new List<Sense>();
+            Note = new Note();
         }
 
         public Word Clone()
         {
             var clone = new Word
             {
-                Id = Id.Clone() as string,
+                Id = (string)Id.Clone(),
                 Guid = Guid,
-                Vernacular = Vernacular.Clone() as string,
-                Plural = Plural.Clone() as string,
-                Created = Created.Clone() as string,
-                Modified = Modified.Clone() as string,
-                PartOfSpeech = PartOfSpeech.Clone() as string,
-                OtherField = OtherField.Clone() as string,
-                ProjectId = ProjectId.Clone() as string,
+                Vernacular = (string)Vernacular.Clone(),
+                Plural = (string)Plural.Clone(),
+                Created = (string)Created.Clone(),
+                Modified = (string)Modified.Clone(),
+                PartOfSpeech = (string)PartOfSpeech.Clone(),
+                OtherField = (string)OtherField.Clone(),
+                ProjectId = (string)ProjectId.Clone(),
                 Accessibility = Accessibility,
                 Audio = new List<string>(),
                 EditedBy = new List<string>(),
                 History = new List<string>(),
-                Senses = new List<Sense>()
+                Senses = new List<Sense>(),
+                Note = Note.Clone()
             };
 
             foreach (var file in Audio)
             {
-                clone.Audio.Add(file.Clone() as string);
+                clone.Audio.Add((string)file.Clone());
             }
             foreach (var id in EditedBy)
             {
-                clone.EditedBy.Add(id.Clone() as string);
+                clone.EditedBy.Add((string)id.Clone());
             }
             foreach (var id in History)
             {
-                clone.History.Add(id.Clone() as string);
+                clone.History.Add((string)id.Clone());
             }
             foreach (var sense in Senses)
             {
@@ -130,10 +135,12 @@ namespace BackendFramework.Models
                 other.Audio.All(Audio.Contains) &&
 
                 other.Senses.Count == Senses.Count &&
-                other.Senses.All(Senses.Contains);
+                other.Senses.All(Senses.Contains) &&
+
+                other.Note.Equals(Note);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is Word other) || GetType() != obj.GetType())
             {
@@ -169,7 +176,60 @@ namespace BackendFramework.Models
             hash.Add(EditedBy);
             hash.Add(OtherField);
             hash.Add(ProjectId);
+            hash.Add(Note);
             return hash.ToHashCode();
+        }
+    }
+
+    /// <summary> A note associated with a Word, compatible with FieldWorks. </summary>
+    public class Note
+    {
+        /// <summary> The bcp-47 code for the language the note is written in. </summary>
+        public string Language { get; set; }
+
+        /// <summary> The contents of the note. </summary>
+        public string Text { get; set; }
+
+        public Note()
+        {
+            Language = "";
+            Text = "";
+        }
+
+        public Note(string language, string text)
+        {
+            Language = language;
+            Text = text;
+        }
+
+        public Note Clone()
+        {
+            return new Note
+            {
+                Language = (string)Language.Clone(),
+                Text = (string)Text.Clone()
+            };
+        }
+
+        /// <summary> Whether the Note contains any contents that can be serialized. </summary>
+        public bool IsBlank()
+        {
+            return Text == "";
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (!(obj is Note other) || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            return Language.Equals(other.Language) && Text.Equals(other.Text);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Language, Text);
         }
     }
 
@@ -192,10 +252,18 @@ namespace BackendFramework.Models
         [BsonElement("guid")]
         public Guid? Guid { get; set; }
 
+        public Sense()
+        {
+            Accessibility = State.Active;
+            Glosses = new List<Gloss>();
+            SemanticDomains = new List<SemanticDomain>();
+        }
+
         public Sense Clone()
         {
             var clone = new Sense
             {
+                Guid = Guid,
                 Glosses = new List<Gloss>(),
                 SemanticDomains = new List<SemanticDomain>()
             };
@@ -212,7 +280,7 @@ namespace BackendFramework.Models
             return clone;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is Sense other) || GetType() != obj.GetType())
             {
@@ -235,19 +303,28 @@ namespace BackendFramework.Models
 
     public class Gloss
     {
+        /// <summary> The bcp-47 code for the language the note is written in. </summary>
         public string Language { get; set; }
+
+        /// <summary> The gloss string. </summary>
         public string Def { get; set; }
+
+        public Gloss()
+        {
+            Language = "";
+            Def = "";
+        }
 
         public Gloss Clone()
         {
             return new Gloss
             {
-                Language = Language.Clone() as string,
-                Def = Def.Clone() as string
+                Language = (string)Language.Clone(),
+                Def = (string)Def.Clone()
             };
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is Gloss other) || GetType() != obj.GetType())
             {
@@ -273,9 +350,9 @@ namespace BackendFramework.Models
         {
             return new SemanticDomain
             {
-                Name = Name.Clone() as string,
-                Id = Id.Clone() as string,
-                Description = Description.Clone() as string
+                Name = (string)Name.Clone(),
+                Id = (string)Id.Clone(),
+                Description = (string)Description.Clone()
             };
         }
 
@@ -286,7 +363,7 @@ namespace BackendFramework.Models
             Description = "";
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (!(obj is SemanticDomain other) || GetType() != obj.GetType())
             {
@@ -305,9 +382,17 @@ namespace BackendFramework.Models
     /// <summary> Helper object that contains a file along with its name and path </summary>
     public class FileUpload
     {
-        public IFormFile File { get; set; }
+        public IFormFile? File { get; set; }
         public string Name { get; set; }
         public string FilePath { get; set; }
+
+        /// <summary> Models by ASP.NET Core POSTs must have a constructor with zero arguments. </summary>
+        public FileUpload()
+        {
+            File = null;
+            Name = "";
+            FilePath = "";
+        }
     }
 
     /// <summary>
@@ -320,6 +405,14 @@ namespace BackendFramework.Models
         public List<MergeSourceWord> ChildrenWords { get; set; }
         public string MergedBy { get; set; }
         public string Time { get; set; }
+
+        public MergeWords()
+        {
+            Parent = new Word();
+            ChildrenWords = new List<MergeSourceWord>();
+            MergedBy = "";
+            Time = "";
+        }
     }
 
     /// <summary> Helper object that contains a wordId and the type of merge that should be performed </summary>
@@ -327,6 +420,12 @@ namespace BackendFramework.Models
     {
         public string SrcWordId;
         public List<State> SenseStates;
+
+        public MergeSourceWord()
+        {
+            SrcWordId = "";
+            SenseStates = new List<State>();
+        }
     }
 
     /// <summary> Information about the state of the word in that database used for merging </summary>

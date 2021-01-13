@@ -1,25 +1,19 @@
+import "jest-canvas-mock";
 import React from "react";
-import ReactDOM from "react-dom";
-import configureMockStore from "redux-mock-store";
-import { defaultState } from "../../App/DefaultState";
-import { Provider } from "react-redux";
-import { GoalRoute } from "../component";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter } from "react-router-dom";
+import renderer from "react-test-renderer";
 
-const createMockStore = configureMockStore([]);
+import { Path } from "../../../history";
+import GoalRoute from "../component";
 
-it("renders without crashing", () => {
-  const mockStore = createMockStore({
-    ...defaultState,
+describe("GoalRoute", () => {
+  it("renders without crashing", () => {
+    renderer.act(() => {
+      renderer.create(
+        <MemoryRouter initialEntries={[Path.Goals]} initialIndex={0}>
+          <GoalRoute />
+        </MemoryRouter>
+      );
+    });
   });
-  const div = document.createElement("div");
-  ReactDOM.render(
-    <Provider store={mockStore}>
-      <MemoryRouter initialEntries={["/goals"]} initialIndex={0}>
-        <GoalRoute />
-      </MemoryRouter>
-    </Provider>,
-    div
-  );
-  ReactDOM.unmountComponentAtNode(div);
 });

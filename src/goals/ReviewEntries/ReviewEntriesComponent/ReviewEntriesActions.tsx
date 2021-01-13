@@ -3,7 +3,7 @@ import { ThunkDispatch } from "redux-thunk";
 import * as backend from "../../../backend";
 import { getProjectId } from "../../../backend/localStorage";
 import { StoreState } from "../../../types";
-import { Sense, State, Word } from "../../../types/word";
+import { Note, Sense, State, Word } from "../../../types/word";
 import {
   OLD_SENSE,
   parseWord,
@@ -16,7 +16,6 @@ export enum ReviewEntriesActionTypes {
   SetAnalysisLanguage = "SET_ANALYSIS_LANGUAGE",
   UpdateAllWords = "UPDATE_ALL_WORDS",
   UpdateWord = "UPDATE_WORD",
-  UpdateRecordingStatus = "UPDATE_RECORDING_STATUS",
   ClearReviewEntriesState = "CLEAR_REVIEW_ENTRIES_STATE",
 }
 
@@ -37,12 +36,6 @@ interface ReviewUpdateWord {
   newWord: ReviewEntriesWord;
 }
 
-interface ReviewUpdateRecordingStatus {
-  type: ReviewEntriesActionTypes.UpdateRecordingStatus;
-  recordingStatus: boolean;
-  wordId: string | undefined;
-}
-
 interface ReviewClearReviewEntriesState {
   type: ReviewEntriesActionTypes.ClearReviewEntriesState;
 }
@@ -51,7 +44,6 @@ export type ReviewEntriesAction =
   | ReviewSetAnalysisLanguage
   | ReviewUpdateWords
   | ReviewUpdateWord
-  | ReviewUpdateRecordingStatus
   | ReviewClearReviewEntriesState;
 
 export function setAnalysisLanguage(
@@ -80,17 +72,6 @@ function updateWord(
     id,
     newId,
     newWord,
-  };
-}
-
-export function updateRecordingStatus(
-  recordingStatus: boolean,
-  wordId: string | undefined
-): ReviewUpdateRecordingStatus {
-  return {
-    type: ReviewEntriesActionTypes.UpdateRecordingStatus,
-    recordingStatus,
-    wordId,
   };
 }
 
@@ -258,6 +239,7 @@ export function updateFrontierWord(
     editWord.senses = editWord.senses.filter(
       (sense) => sense.accessibility !== State.Deleted
     );
+    editWord.note = new Note(editSource.noteText, editWord.note?.language);
 
     dispatch(
       updateWord(

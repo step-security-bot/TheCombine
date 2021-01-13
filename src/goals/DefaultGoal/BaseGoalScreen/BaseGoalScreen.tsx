@@ -1,85 +1,53 @@
-import { GoalProps, Goal, GoalType } from "../../../types/goals";
 import React, { ReactNode } from "react";
-import { LocalizeContextProps, withLocalize } from "react-localize-redux";
-import DisplayProg from "./DisplayProg";
-import AppBarComponent from "../../../components/AppBar/AppBarComponent";
+
 import PageNotFound from "../../../components/PageNotFound/component";
 import EmptyGoalComponent from "../../../components/EmptyGoal/EmptyGoalComponent";
-import MergeDupStep from "../../MergeDupGoal/MergeDupStep";
+import { Goal, GoalProps, GoalType } from "../../../types/goals";
 import CharInventoryCreation from "../../CharInventoryCreation";
+import MergeDupStep from "../../MergeDupGoal/MergeDupStep";
 import ReviewEntriesComponent from "../../ReviewEntries/ReviewEntriesComponent";
-import { CurrentTab } from "../../../types/currentTab";
+import DisplayProg from "./DisplayProg";
 
-interface componentSteps {
-  goal: GoalType;
-  steps: ReactNode[];
+function stepComponent(goalType: GoalType): ReactNode[] {
+  switch (goalType) {
+    case GoalType.CreateCharInv:
+      return [<CharInventoryCreation />];
+    case GoalType.MergeDups:
+      return [<MergeDupStep />];
+    case GoalType.ReviewEntries:
+      return [<ReviewEntriesComponent />];
+    default:
+      return [];
+  }
 }
 
-const stepComponentDictionary: componentSteps[] = [
-  {
-    goal: GoalType.CreateCharInv,
-    steps: [<CharInventoryCreation />],
-  },
-  {
-    goal: GoalType.ValidateChars,
-    steps: [],
-  },
-  {
-    goal: GoalType.CreateStrWordInv,
-    steps: [],
-  },
-  {
-    goal: GoalType.ValidateStrWords,
-    steps: [],
-  },
-  {
-    goal: GoalType.MergeDups,
-    steps: [<MergeDupStep />],
-  },
-  {
-    goal: GoalType.SpellcheckGloss,
-    steps: [],
-  },
-  {
-    goal: GoalType.ReviewEntries,
-    steps: [<ReviewEntriesComponent />],
-  },
-  {
-    goal: GoalType.HandleFlags,
-    steps: [],
-  },
-];
-
 /**
- * Decides which component should be rendered for a goal, based on the current
- * step in the goal
+ * Decides which component should be rendered for a goal,
+ * based on the current step in the goal
  */
-class BaseGoalScreen extends React.Component<GoalProps & LocalizeContextProps> {
-  renderGoal(goal: Goal): ReactNode {
-    return (
-      <div className="GoalDisplay content">
-        <AppBarComponent currentTab={CurrentTab.DataCleanup} />
-        <DisplayProg />
-        {this.displayComponent(goal)}
-      </div>
-    );
-  }
-
-  displayComponent(goal: Goal): ReactNode {
-    let steps: ReactNode[] = stepComponentDictionary[goal.goalType].steps;
-    if (steps.length > 0) {
-      return stepComponentDictionary[goal.goalType].steps[0];
+export default class BaseGoalScreen extends React.Component<GoalProps> {
+  displayComponent(goal: Goal) {
+    const steps = stepComponent(goal.goalType);
+    if (steps.length) {
+      return steps[0];
     }
     return <EmptyGoalComponent />;
   }
 
-  render() {
+  renderGoal(goal: Goal) {
     return (
-      <div className={"GoalDisplay"}>
-        {this.props.goal ? this.renderGoal(this.props.goal) : <PageNotFound />}
-      </div>
+      <React.Fragment>
+        <DisplayProg />
+        {this.displayComponent(goal)}
+      </React.Fragment>
+    );
+  }
+
+  render() {
+    return this.props.goal ? (
+      this.renderGoal(this.props.goal)
+    ) : (
+      <PageNotFound />
     );
   }
 }
-
-export default withLocalize(BaseGoalScreen);

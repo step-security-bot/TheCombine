@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using BackendFramework.Helper;
@@ -22,17 +23,17 @@ namespace Backend.Tests.Mocks
             return Task.FromResult(_projects.Select(project => project.Clone()).ToList());
         }
 
-        public Task<Project> GetProject(string id)
+        public Task<Project?> GetProject(string id)
         {
             try
             {
                 var foundProjects = _projects.Single(project => project.Id == id);
-                return Task.FromResult(foundProjects.Clone());
+                return Task.FromResult<Project?>(foundProjects.Clone());
             }
             catch (InvalidOperationException)
             {
-                // When a Project is missing, the real ProjectController returns null.
-                return null;
+                // If a Project is missing, the real service returns null.
+                return Task.FromResult<Project?>(null);
             }
         }
 
@@ -49,10 +50,20 @@ namespace Backend.Tests.Mocks
             return Task.FromResult(true);
         }
 
+        /// <summary>
+        /// Delete a project and any associated files stored on disk.
+        /// </summary>
         public Task<bool> Delete(string id)
         {
             var foundProject = _projects.Single(project => project.Id == id);
             var success = _projects.Remove(foundProject);
+
+            // Clean up any files stored on disk for this project.
+            var projectFilePath = FileStorage.GetProjectDir(id);
+            if (Directory.Exists(projectFilePath))
+            {
+                Directory.Delete(projectFilePath, true);
+            }
             return Task.FromResult(success);
         }
 
@@ -95,9 +106,9 @@ namespace Backend.Tests.Mocks
             return Task.FromResult(false);
         }
 
-        public bool CanImportLift(string projectId)
+        public Task<bool> CanImportLift(string projectId)
         {
-            return true;
+            return Task.FromResult(true);
         }
     }
 }

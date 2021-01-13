@@ -33,14 +33,14 @@ namespace BackendFramework.Controllers
         [HttpGet]
         public async Task<IActionResult> GetFrontier(string projectId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var project = _projectService.GetProject(projectId);
-            if (project == null)
+            var project = await _projectService.GetProject(projectId);
+            if (project is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -86,14 +86,14 @@ namespace BackendFramework.Controllers
 #pragma warning restore 1998
         {
 #if DEBUG
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var project = _projectService.GetProject(projectId);
-            if (project == null)
+            var project = await _projectService.GetProject(projectId);
+            if (project is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -111,21 +111,21 @@ namespace BackendFramework.Controllers
         [HttpDelete("{wordId}")]
         public async Task<IActionResult> DeleteFrontierWord(string projectId, string wordId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             // Ensure word exists in frontier
             var id = await _wordService.DeleteFrontierWord(projectId, wordId);
-            if (id == null)
+            if (id is null)
             {
                 return new NotFoundObjectResult(wordId);
             }

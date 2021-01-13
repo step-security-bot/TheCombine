@@ -8,8 +8,8 @@ import { CreateStrWordInv } from "../../goals/CreateStrWordInv/CreateStrWordInv"
 import { HandleFlags } from "../../goals/HandleFlags/HandleFlags";
 import DupFinder from "../../goals/MergeDupGoal/DuplicateFinder/DuplicateFinder";
 import { MergeDupData, MergeDups } from "../../goals/MergeDupGoal/MergeDups";
-import { Hash } from "../../goals/MergeDupGoal/MergeDupStep/MergeDupsTree";
 import {
+  generateBlacklistHash,
   MergeTreeAction,
   refreshWords,
 } from "../../goals/MergeDupGoal/MergeDupStep/MergeDupStepActions";
@@ -17,9 +17,9 @@ import { ReviewEntries } from "../../goals/ReviewEntries/ReviewEntries";
 import { SpellCheckGloss } from "../../goals/SpellCheckGloss/SpellCheckGloss";
 import { ValidateChars } from "../../goals/ValidateChars/ValidateChars";
 import { ValidateStrWords } from "../../goals/ValidateStrWords/ValidateStrWords";
-import history from "../../history";
+import history, { Path } from "../../history";
 import { StoreState } from "../../types";
-import { Goal, GoalType } from "../../types/goals";
+import { Goal, GoalType, maxNumSteps } from "../../types/goals";
 import { ActionWithPayload } from "../../types/mockAction";
 import { User } from "../../types/user";
 import { Edit } from "../../types/userEdit";
@@ -94,7 +94,7 @@ export function asyncAddGoalToHistory(goal: Goal) {
         await Backend.addGoalToUserEdit(userEditId, goal)
           .then((resp) => {
             dispatch(addGoalToHistory(goal));
-            history.push(`/goals/${resp}`);
+            history.push(`${Path.Goals}/${resp}`);
           })
           .catch((err: string) => {
             console.log(err);
@@ -108,51 +108,44 @@ export function loadGoalData(goal: Goal) {
   return async (dispatch: ThunkDispatch<any, any, MergeTreeAction>) => {
     switch (goal.goalType) {
       case GoalType.MergeDups:
-        let finder = new DupFinder();
+        const finder = new DupFinder();
+        const groups = await finder.getNextDups();
 
-        //Used for testing duplicate finder. (See docs/bitmap_testing.md)
-        //let t0 = performance.now();
+        const usedIDs: string[] = [];
+        const newGroups = [];
+        const blacklist = LocalStorage.getMergeDupsBlacklist();
 
-        let groups = await finder.getNextDups();
-
-        //Used for testing duplicate finder. (See docs/bitmap_testing.md)
-        //console.log(performance.now() - t0);
-
-        let usedIDs: string[] = [];
-
-        let newGroups = [];
-
-        let blacklist: Hash<boolean> = LocalStorage.getMergeDupsBlacklist();
-
-        for (let group of groups) {
-          let newGroup = [];
-          for (let word of group) {
-            if (!usedIDs.includes(word.id)) {
-              usedIDs.push(word.id);
-              newGroup.push(word);
-            }
+        for (const group of groups) {
+          // Remove words that are already included.
+          const newGroup = group.filter((w) => !usedIDs.includes(w.id));
+          if (newGroup.length < 2) {
+            continue;
           }
-          // check blacklist
-          let groupIds = newGroup.map((a) => a.id).sort();
-          let groupHash = groupIds.reduce((val, acc) => `${acc}:${val}`, "");
-          if (!blacklist[groupHash] && newGroup.length > 1) {
+
+          // Add if not blacklisted.
+          const groupIds = newGroup.map((w) => w.id);
+          const groupHash = generateBlacklistHash(groupIds);
+          if (!blacklist[groupHash]) {
             newGroups.push(newGroup);
+            usedIDs.push(...groupIds);
+          }
+
+          // Stop the process once maxNumSteps many groups found.
+          if (newGroups.length === maxNumSteps(goal.goalType)) {
+            break;
           }
         }
 
-        if (newGroups.length >= 8) {
-          newGroups = newGroups.slice(0, 8);
-        }
-
+        // Add data to goal.
         goal.data = { plannedWords: newGroups };
         goal.numSteps = newGroups.length;
+
+        // Reset goal steps.
         goal.currentStep = 0;
         goal.steps = [];
 
         await dispatch(refreshWords());
 
-        break;
-      case GoalType.CreateCharInv:
         break;
       default:
         break;
@@ -164,9 +157,7 @@ export function loadGoalData(goal: Goal) {
 export function updateStepData(goal: Goal): Goal {
   switch (goal.goalType) {
     case GoalType.MergeDups: {
-      let currentGoalData: MergeDupData = JSON.parse(
-        JSON.stringify(goal.data as MergeDupData)
-      );
+      const currentGoalData = goal.data as MergeDupData;
       goal.steps[goal.currentStep] = {
         words: currentGoalData.plannedWords[goal.currentStep],
       };
@@ -196,37 +187,35 @@ export function getIndexInHistory(history: Goal[], currentGoal: Goal): number {
   return -1;
 }
 
-function convertEditsToArrayOfGoals(edits: Edit[]): Goal[] {
-  let history: Goal[] = [];
-  for (var edit of edits) {
-    let nextGoal: Goal | undefined = goalTypeToGoal(edit.goalType);
-    if (nextGoal) {
-      history.push(nextGoal);
-    }
+function convertEditsToArrayOfGoals(edits: Edit[]) {
+  const history: Goal[] = [];
+  for (const edit of edits) {
+    const nextGoal = goalTypeToGoal(edit.goalType);
+    history.push(nextGoal);
   }
   return history;
 }
 
-function goalTypeToGoal(type: number): Goal | undefined {
+function goalTypeToGoal(type: GoalType) {
   switch (type) {
     case GoalType.CreateCharInv:
       return new CreateCharInv();
-    case GoalType.ValidateChars:
-      return new ValidateChars();
     case GoalType.CreateStrWordInv:
       return new CreateStrWordInv();
-    case GoalType.ValidateStrWords:
-      return new ValidateStrWords();
-    case GoalType.MergeDups:
-      return new MergeDups();
-    case GoalType.SpellcheckGloss:
-      return new SpellCheckGloss();
-    case GoalType.ReviewEntries:
-      return new ReviewEntries();
     case GoalType.HandleFlags:
       return new HandleFlags();
+    case GoalType.MergeDups:
+      return new MergeDups();
+    case GoalType.ReviewEntries:
+      return new ReviewEntries();
+    case GoalType.SpellcheckGloss:
+      return new SpellCheckGloss();
+    case GoalType.ValidateChars:
+      return new ValidateChars();
+    case GoalType.ValidateStrWords:
+      return new ValidateStrWords();
     default:
-      return undefined;
+      return new Goal();
   }
 }
 

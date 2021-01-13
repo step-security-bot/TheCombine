@@ -2,6 +2,7 @@
 using System.IO;
 using Backend.Tests.Mocks;
 using BackendFramework.Controllers;
+using BackendFramework.Helper;
 using BackendFramework.Interfaces;
 using BackendFramework.Models;
 using Microsoft.AspNetCore.Http;
@@ -12,11 +13,11 @@ namespace Backend.Tests.Controllers
 {
     public class AvatarControllerTests
     {
-        private IUserService _userService;
-        private UserController _userController;
-        private AvatarController _avatarController;
-        private PermissionServiceMock _permissionService;
-        private User _jwtAuthenticatedUser;
+        private IUserService _userService = null!;
+        private UserController _userController = null!;
+        private AvatarController _avatarController = null!;
+        private PermissionServiceMock _permissionService = null!;
+        private User _jwtAuthenticatedUser = null!;
 
         [SetUp]
         public void Setup()
@@ -32,46 +33,43 @@ namespace Backend.Tests.Controllers
 
             // User controller
             _userController.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
-
             _jwtAuthenticatedUser = new User { Username = "user", Password = "pass" };
             _userService.Create(_jwtAuthenticatedUser);
             _jwtAuthenticatedUser = _userService.Authenticate(
-                _jwtAuthenticatedUser.Username, _jwtAuthenticatedUser.Password).Result;
+                _jwtAuthenticatedUser.Username, _jwtAuthenticatedUser.Password).Result ?? throw new Exception();
         }
 
-        private static string RandomString(int length = 0)
+        /// <summary>
+        /// Delete the image file stored on disk for a particular user.
+        /// </summary>
+        /// <remarks>
+        /// Note, this somewhat breaks the encapsulation of the AvatarController. If support is added for deleting
+        /// Avatars in the future, that should be used and this function removed.
+        /// </remarks>
+        private static void DeleteAvatarFile(string userId)
         {
-            if (length == 0)
-            {
-                return Convert.ToBase64String(Guid.NewGuid().ToByteArray());
-            }
-            return Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, length);
-        }
-
-        private User RandomUser()
-        {
-            var user = new User { Username = RandomString(4), Password = RandomString(4) };
-            return user;
+            var path = FileStorage.GenerateAvatarFilePath(userId);
+            File.Delete(path);
         }
 
         [Test]
         public void TestAvatarImport()
         {
-            var filePath = Path.Combine(Directory.GetParent(
-                Directory.GetParent(Directory.GetParent(
-                    Environment.CurrentDirectory).ToString()).ToString()).ToString(), "Assets", "combine.png");
+            var filePath = Path.Combine(Util.AssetsDir, "combine.png");
+            using var stream = File.OpenRead(filePath);
 
-            var fstream = File.OpenRead(filePath);
-
-            var formFile = new FormFile(fstream, 0, fstream.Length, "dave", "combine.png");
-            var fileUpload = new FileUpload { Name = "FileName", File = formFile };
+            var formFile = new FormFile(stream, 0, stream.Length, "dave", "combine.png");
+            var fileUpload = new FileUpload { File = formFile, Name = "FileName" };
 
             _ = _avatarController.UploadAvatar(_jwtAuthenticatedUser.Id, fileUpload).Result;
 
             var action = _userController.Get(_jwtAuthenticatedUser.Id).Result;
 
-            var foundUser = (action as ObjectResult).Value as User;
+            var foundUser = (User)((ObjectResult)action).Value;
             Assert.IsNotNull(foundUser.Avatar);
+
+            // Clean up.
+            DeleteAvatarFile(_jwtAuthenticatedUser.Id);
         }
     }
 }

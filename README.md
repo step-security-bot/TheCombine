@@ -7,7 +7,9 @@
 [![Language grade: JavaScript][lgtm-js-badge]][lgtm-js]
 [![Total alerts][lgtm-alerts-badge]][lgtm-alerts]
 [![Python Actions Status][github-actions-python-badge]][github-actions]
-[![GitHub release][github-version-badge]][github-version]
+
+[![GitHub release][github-release-badge]][github-version]
+[![GitHub version][github-version-badge]][github-version]
 ![Localization][localization-badge]
 [![GitHub][github-license-badge]][github-license]
 [![GitHub contributors][github-contribs-badge]][github-contribs]
@@ -25,6 +27,7 @@
 [lgtm-alerts]: https://lgtm.com/projects/g/sillsdev/TheCombine/alerts
 [localization-badge]: https://img.shields.io/badge/localization-En%20Es%20Fr-blue
 [github-version-badge]: https://img.shields.io/github/package-json/v/sillsdev/TheCombine
+[github-release-badge]: https://img.shields.io/github/v/release/sillsdev/TheCombine
 [github-version]: https://github.com/sillsdev/TheCombine/releases
 [github-license-badge]: https://img.shields.io/github/license/sillsdev/TheCombine
 [github-license]: https://github.com/sillsdev/TheCombine/blob/master/LICENSE
@@ -61,8 +64,9 @@ A rapid word collection tool.
    - [MongoDB](https://docs.mongodb.com/manual/administration/install-community/) and add
      /bin to PATH Environment Variable
      - On Windows, if using [Chocolatey][chocolatey]: `choco install mongodb`
-   - [VS Code](https://code.visualstudio.com/download) and Prettier code
-     formatting extension
+   - [VS Code](https://code.visualstudio.com/download) and the following extensions:
+     - C# (`ms-dotnettools.csharp`)
+     - Prettier - Code formatter (`esbenp.prettier-vscode`)
    - [dotnet-format](https://github.com/dotnet/format):
      `dotnet tool update --global dotnet-format --version 4.1.131201`
    - [dotnet-reportgenerator](https://github.com/danielpalme/ReportGenerator)
@@ -82,13 +86,10 @@ A rapid word collection tool.
    - `COMBINE_SMTP_ADDRESS`
    - `COMBINE_SMTP_FROM`
 
-6. (VS Code Users Only) Enable automatic formatting on save.
-   - **File** | **Preferences** | **Settings** | Search for **formatOnSave** and
-     check the box.
-7. Run `npm start` from the project directory to install dependencies and start
+6. Run `npm start` from the project directory to install dependencies and start
    the project.
 
-8. Consult our [C#](docs/c_sharp_style_guide.md)
+7. Consult our [C#](docs/c_sharp_style_guide.md)
    and [JavaScript/TypeScript](docs/ts_style_guide.md)
    style guides for best coding practices in this project.
 
@@ -312,6 +313,10 @@ Install [Docker](https://docs.docker.com/get-docker/).
 (Linux Only) Install [Docker Compose](https://docs.docker.com/compose/install/)
 separately. This is included by default in Docker Desktop for Windows and macOS.
 
+(macOS / Windows Only) If you are on macOS or Windows without 
+[WSL2 installed](https://docs.microsoft.com/en-us/windows/wsl/install-win10) you
+must ensure that Docker Desktop is allocated at least 4GB of Memory in Preferences | Resources.
+
 #### Python
 
 A Python script, `scripts/docker_setup.py` is used to configure the files needed to run
@@ -319,10 +324,10 @@ _TheCombine_ in Docker containers.
 
 ##### Windows Only
 
-- Navigate to the [Python 3.8.5 Downloads](https://www.python.org/downloads/release/python-385/) page.
+- Navigate to the [Python Downloads](https://www.python.org/downloads/) page.
 
-- Download and run the appropriate installer - it is most likely the installer labeled
-  _Windows x86-64 executable installer_
+- Select the "Download Python" button at the top of the page. This will download the latest
+  appropriate x86-64 executable installer.
 
 - Once Python is installed, create an isolated Python
   [virtual environment](https://docs.python.org/3/library/venv.html) using the
@@ -350,7 +355,28 @@ $ python3 -m venv venv
 $ source venv/bin/activate
 ```
 
+##### macOS Only
+
+Install [Homebrew](https://brew.sh/).
+
+Install Python 3 using Homebrew:
+
+```bash
+$ brew install python
+```
+
+Once Python is installed, create an isolated Python virtual environment:
+
+```bash
+$ python3 -m venv venv
+$ source venv/bin/activate
+```
+
 ##### Python Packages
+
+**Important**: All Python commands and scripts should be executed within a terminal using an
+activated Python virtual environment. This will be denoted with the `(venv)` prefix on the
+prompt.
 
 With an active virtual environment, install Python development requirements for this project:
 
@@ -381,6 +407,20 @@ requirements are backwards-compatible.
 Then manually remove `dataclasses==` line from `dev-requirements.txt`. This is to work
 around a pinning issue with supporting Python 3.6 and 3.7+.
 
+##### User Guide
+
+To build the user guide and serve it dynamically (automatically reloading on change):
+
+```bash
+(venv) $ tox -e user-guide-serve
+```
+
+To build the user guide statically into `user-guide/site`:
+
+```bash
+(venv) $ tox -e user-guide
+```
+
 #### Configure Docker
 
 Run the configuration script in an activated virtual environment to generate
@@ -399,7 +439,7 @@ For information on _Docker Compose_ see the
 
 #### Running In Docker
 
-1. Create the required docker files by running `docker_setup.py` from _TheCombine_'s project directory.
+1. Create the required docker files by running `scripts/docker_setup.py` from _TheCombine_'s project directory.
 
 2. The `docker_setup.py` will generate a file, `.env.backend`, that defines
    the environment variables needed by the Backend container. If you have defined
@@ -407,7 +447,8 @@ For information on _Docker Compose_ see the
    section above, then these variables will already be set. If not, then you will need to edit
    `.env.backend` and provide values for the variables that are listed.
 
-3. Build the images for the Docker containers
+3. Build the images for the Docker containers (**Note**: On Linux, you will need to prepend `sudo` to
+   all of the following `docker` commands). On Windows and macOS, Docker Desktop must be running.
 
    ```bash
    $ docker-compose build --parallel
@@ -460,7 +501,7 @@ otherwise an error will be logged and the exit code will be non-`0`.
 ### Production
 
 The process for configuring and deploying _TheCombine_ for production targets is
-described in ./docs/docker_deploy/README.md
+described in [docs/docker_deploy/README.md](docs/docker_deploy/README.md).
 
 ## Learn More
 

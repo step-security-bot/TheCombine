@@ -8,6 +8,7 @@ import {
   TextField,
   Typography,
 } from "@material-ui/core";
+import { Help } from "@material-ui/icons";
 import ReCaptcha from "@matt-block/react-recaptcha-v2";
 import * as React from "react";
 import {
@@ -16,7 +17,7 @@ import {
   withLocalize,
 } from "react-localize-redux";
 
-import history from "../../../history";
+import history, { Path } from "../../../history";
 import { RuntimeConfig } from "../../../types/runtimeConfig";
 
 export interface LoginDispatchProps {
@@ -152,7 +153,7 @@ export class Login extends React.Component<
               <Typography>
                 <Link
                   href={"#"}
-                  onClick={() => history.push("/forgot/request")}
+                  onClick={() => history.push(Path.PwRequest)}
                   variant="subtitle2"
                 >
                   <Translate id="login.forgotPassword" />
@@ -187,18 +188,31 @@ export class Login extends React.Component<
                   />
                 </div>
               )}
+
               {/* Register and Login buttons */}
               <Grid container justify="flex-end" spacing={2}>
-                <Grid item>
+                <Grid item xs={4} sm={6}>
                   <Button
                     onClick={() => {
-                      history.push("/register");
+                      // This link does not work in development, but should in production.
+                      window.open(`docs`);
+                    }}
+                  >
+                    <Help />
+                  </Button>
+                </Grid>
+
+                <Grid item xs={4} sm={3}>
+                  <Button
+                    onClick={() => {
+                      history.push(Path.Register);
                     }}
                   >
                     <Translate id="login.register" />
                   </Button>
                 </Grid>
-                <Grid item>
+
+                <Grid item xs={4} sm={3}>
                   <Button
                     type="submit"
                     variant="contained"
@@ -208,6 +222,7 @@ export class Login extends React.Component<
                     <Translate id="login.login" />
                   </Button>
                 </Grid>
+
                 <br />
                 {this.props.loginAttempt && <CircularProgress size={30} />}
               </Grid>

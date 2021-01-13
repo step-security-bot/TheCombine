@@ -6,7 +6,7 @@ import {
   DialogContentText,
   DialogTitle,
 } from "@material-ui/core";
-import React from "react";
+import React, { useState } from "react";
 import { Translate } from "react-localize-redux";
 
 import LoadingButton from "./LoadingButton";
@@ -23,7 +23,7 @@ interface ButtonConfirmationProps {
  * Dialog for a button to confirm or cancel its click action
  */
 export default function ButtonConfirmation(props: ButtonConfirmationProps) {
-  const [loading, setLoading] = React.useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   async function onConfirm() {
     setLoading(true);
@@ -52,11 +52,12 @@ export default function ButtonConfirmation(props: ButtonConfirmationProps) {
           <Translate id="buttons.cancel" />
         </Button>
         <LoadingButton
-          onClick={onConfirm}
-          color="primary"
-          variant="contained"
           loading={loading}
-          {...props}
+          buttonProps={{
+            onClick: onConfirm,
+            color: "primary",
+            variant: "contained",
+          }}
         >
           <Translate id="buttons.confirm" />
         </LoadingButton>

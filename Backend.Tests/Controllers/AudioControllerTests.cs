@@ -13,25 +13,31 @@ namespace Backend.Tests.Controllers
 {
     public class AudioControllerTests
     {
-        private IWordRepository _wordrepo;
-        private WordService _wordService;
-        private WordController _wordController;
-        private AudioController _audioController;
+        private IWordRepository _wordRepo = null!;
+        private WordService _wordService = null!;
+        private WordController _wordController = null!;
+        private AudioController _audioController = null!;
 
-        private IProjectService _projectService;
-        private string _projId;
-        private PermissionServiceMock _permissionService;
+        private IProjectService _projectService = null!;
+        private string _projId = null!;
+        private PermissionServiceMock _permissionService = null!;
 
         [SetUp]
         public void Setup()
         {
-            _wordrepo = new WordRepositoryMock();
-            _wordService = new WordService(_wordrepo);
+            _wordRepo = new WordRepositoryMock();
+            _wordService = new WordService(_wordRepo);
             _projectService = new ProjectServiceMock();
             _projId = _projectService.Create(new Project()).Result.Id;
             _permissionService = new PermissionServiceMock();
-            _wordController = new WordController(_wordrepo, _wordService, _projectService, _permissionService);
-            _audioController = new AudioController(_wordrepo, _wordService, _permissionService);
+            _wordController = new WordController(_wordRepo, _wordService, _projectService, _permissionService);
+            _audioController = new AudioController(_wordRepo, _wordService, _permissionService);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _projectService.Delete(_projId);
         }
 
         private static string RandomString(int length = 16)
@@ -48,54 +54,48 @@ namespace Backend.Tests.Controllers
         [Test]
         public void TestAudioImport()
         {
-            // Get path to sound in Assets folder, from debugging folder.
-            var filePath = Path.Combine(Directory.GetParent(Directory.GetParent(
-                Directory.GetParent(Environment.CurrentDirectory).ToString()).ToString()).ToString(),
-                "Assets", "sound.mp3");
+            const string soundFileName = "sound.mp3";
+            var filePath = Path.Combine(Util.AssetsDir, soundFileName);
 
             // Open the file to read to controller.
-            var fstream = File.OpenRead(filePath);
+            using var stream = File.OpenRead(filePath);
+            var formFile = new FormFile(stream, 0, stream.Length, "name", soundFileName);
+            var fileUpload = new FileUpload { File = formFile, Name = "FileName" };
 
-            // Generate parameters for controller call.
-            var formFile = new FormFile(fstream, 0, fstream.Length, "name", "sound.mp3");
-            var fileUpload = new FileUpload { Name = "FileName", File = formFile };
-
-            var word = _wordrepo.Create(RandomWord()).Result;
+            var word = _wordRepo.Create(RandomWord()).Result;
 
             // `fileUpload` contains the file stream and the name of the file.
             _ = _audioController.UploadAudioFile(_projId, word.Id, fileUpload).Result;
 
             var action = _wordController.Get(_projId, word.Id).Result;
 
-            var foundWord = (action as ObjectResult).Value as Word;
+            var foundWord = (Word)((ObjectResult)action).Value;
             Assert.IsNotNull(foundWord.Audio);
-
-            fstream.Close();
         }
 
         [Test]
         public void DeleteAudio()
         {
             // Fill test database
-            var origWord = _wordrepo.Create(RandomWord()).Result;
+            var origWord = _wordRepo.Create(RandomWord()).Result;
 
             // Add audio file to word
             origWord.Audio.Add("a.wav");
 
             // Test delete function
-            var action = _audioController.Delete(_projId, origWord.Id, "a.wav").Result;
+            _ = _audioController.Delete(_projId, origWord.Id, "a.wav").Result;
 
             // Original word persists
-            Assert.IsTrue(_wordrepo.GetAllWords(_projId).Result.Count == 2);
+            Assert.IsTrue(_wordRepo.GetAllWords(_projId).Result.Count == 2);
 
             // Get the new word from the database
-            var frontier = _wordrepo.GetFrontier(_projId).Result;
+            var frontier = _wordRepo.GetFrontier(_projId).Result;
 
             // Ensure the new word has no audio files
             Assert.IsTrue(frontier[0].Audio.Count == 0);
 
             // Test the frontier
-            Assert.That(_wordrepo.GetFrontier(_projId).Result, Has.Count.EqualTo(1));
+            Assert.That(_wordRepo.GetFrontier(_projId).Result, Has.Count.EqualTo(1));
 
             // Ensure the word with deleted audio is in the frontier
             Assert.IsTrue(frontier.Count == 1);

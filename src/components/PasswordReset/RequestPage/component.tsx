@@ -3,7 +3,7 @@ import * as React from "react";
 import { LocalizeContextProps, Translate } from "react-localize-redux";
 
 import { isEmailTaken, isUsernameTaken } from "../../../backend";
-import history from "../../../history";
+import history, { Path } from "../../../history";
 import LoadingDoneButton from "../../Buttons/LoadingDoneButton";
 
 export interface ResetRequestDispatchProps {
@@ -43,7 +43,7 @@ export default class ResetRequest extends React.Component<
     if (emailExists || usernameExists) {
       this.props.passwordResetRequest(this.state.emailOrUsername);
       this.setState({ done: true, loading: false });
-      setTimeout(() => history.push("/login"), 1000);
+      setTimeout(() => history.push(Path.Login), 1000);
     } else {
       this.setState({ emailOrUsernameExists: false, loading: false });
     }
@@ -85,12 +85,14 @@ export default class ResetRequest extends React.Component<
               </Grid>
               <Grid item>
                 <LoadingDoneButton
-                  variant="contained"
-                  color="primary"
-                  onClick={() => this.onSubmit}
                   disabled={!this.state.emailOrUsername}
                   loading={this.state.loading}
                   done={this.state.done}
+                  buttonProps={{
+                    onClick: () => this.onSubmit,
+                    variant: "contained",
+                    color: "primary",
+                  }}
                 >
                   <Translate id="passwordReset.submit" />
                 </LoadingDoneButton>

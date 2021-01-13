@@ -12,12 +12,12 @@ namespace Backend.Tests.Controllers
 {
     public class WordControllerTests
     {
-        private IWordRepository _repo;
-        private IWordService _wordService;
-        private WordController _wordController;
-        private IProjectService _projectService;
-        private string _projId;
-        private IPermissionService _permissionService;
+        private IWordRepository _repo = null!;
+        private IWordService _wordService = null!;
+        private WordController _wordController = null!;
+        private IProjectService _projectService = null!;
+        private string _projId = null!;
+        private IPermissionService _permissionService = null!;
 
         [SetUp]
         public void Setup()
@@ -33,13 +33,25 @@ namespace Backend.Tests.Controllers
 
         private Word RandomWord()
         {
-            var word = new Word { Senses = new List<Sense>() { new Sense(), new Sense(), new Sense() } };
+            var word = new Word
+            {
+                Created = Util.RandString(),
+                Vernacular = Util.RandString(),
+                Modified = Util.RandString(),
+                PartOfSpeech = Util.RandString(),
+                Plural = Util.RandString(),
+                History = new List<string>(),
+                Audio = new List<string>(),
+                EditedBy = new List<string> { Util.RandString(), Util.RandString() },
+                ProjectId = _projId,
+                Senses = new List<Sense> { new Sense(), new Sense(), new Sense() },
+                Note = new Note { Language = Util.RandString(), Text = Util.RandString() }
+            };
 
             foreach (var sense in word.Senses)
             {
-
                 sense.Accessibility = State.Active;
-                sense.Glosses = new List<Gloss>() { new Gloss(), new Gloss(), new Gloss() };
+                sense.Glosses = new List<Gloss> { new Gloss(), new Gloss(), new Gloss() };
 
                 foreach (var gloss in sense.Glosses)
                 {
@@ -47,27 +59,18 @@ namespace Backend.Tests.Controllers
                     gloss.Language = Util.RandString(3);
                 }
 
-                sense.SemanticDomains = new List<SemanticDomain>()
+                sense.SemanticDomains = new List<SemanticDomain>
                 {
                     new SemanticDomain(), new SemanticDomain(), new SemanticDomain()
                 };
 
-                foreach (var semdom in sense.SemanticDomains)
+                foreach (var semDom in sense.SemanticDomains)
                 {
-                    semdom.Name = Util.RandString();
-                    semdom.Id = Util.RandString();
-                    semdom.Description = Util.RandString();
+                    semDom.Name = Util.RandString();
+                    semDom.Id = Util.RandString();
+                    semDom.Description = Util.RandString();
                 }
             }
-
-            word.Created = Util.RandString();
-            word.Vernacular = Util.RandString();
-            word.Modified = Util.RandString();
-            word.PartOfSpeech = Util.RandString();
-            word.Plural = Util.RandString();
-            word.History = new List<string>();
-            word.Audio = new List<string>();
-            word.ProjectId = _projId;
 
             return word;
         }
@@ -79,7 +82,7 @@ namespace Backend.Tests.Controllers
             _repo.Create(RandomWord());
             _repo.Create(RandomWord());
 
-            var words = (_wordController.Get(_projId).Result as ObjectResult).Value as List<Word>;
+            var words = ((ObjectResult)_wordController.Get(_projId).Result).Value as List<Word>;
             Assert.That(words, Has.Count.EqualTo(3));
             _repo.GetAllWords(_projId).Result.ForEach(word => Assert.Contains(word, words));
         }
@@ -93,10 +96,9 @@ namespace Backend.Tests.Controllers
             _repo.Create(RandomWord());
 
             var action = _wordController.Get(_projId, word.Id).Result;
+            Assert.IsInstanceOf<ObjectResult>(action);
 
-            Assert.That(action, Is.InstanceOf<ObjectResult>());
-
-            var foundWord = (action as ObjectResult).Value as Word;
+            var foundWord = ((ObjectResult)action).Value as Word;
             Assert.AreEqual(word, foundWord);
         }
 
@@ -105,7 +107,7 @@ namespace Backend.Tests.Controllers
         {
             var word = RandomWord();
 
-            var id = (_wordController.Post(_projId, word).Result as ObjectResult).Value as string;
+            var id = (string)((ObjectResult)_wordController.Post(_projId, word).Result).Value;
             word.Id = id;
 
             Assert.AreEqual(word, _repo.GetAllWords(_projId).Result[0]);
@@ -115,15 +117,15 @@ namespace Backend.Tests.Controllers
             var newDuplicate = oldDuplicate.Clone();
 
             _ = _wordController.Post(_projId, oldDuplicate).Result;
-            var result = (_wordController.Post(_projId, newDuplicate).Result as ObjectResult).Value as string;
+            var result = ((ObjectResult)_wordController.Post(_projId, newDuplicate).Result).Value as string;
             Assert.AreEqual(result, "Duplicate");
 
             newDuplicate.Senses.RemoveAt(2);
-            result = (_wordController.Post(_projId, newDuplicate).Result as ObjectResult).Value as string;
+            result = ((ObjectResult)_wordController.Post(_projId, newDuplicate).Result).Value as string;
             Assert.AreEqual(result, "Duplicate");
 
             newDuplicate.Senses = new List<Sense>();
-            result = (_wordController.Post(_projId, newDuplicate).Result as ObjectResult).Value as string;
+            result = ((ObjectResult)_wordController.Post(_projId, newDuplicate).Result).Value as string;
             Assert.AreNotEqual(result, "Duplicate");
         }
 
@@ -133,9 +135,9 @@ namespace Backend.Tests.Controllers
             var origWord = _repo.Create(RandomWord()).Result;
 
             var modWord = origWord.Clone();
-            modWord.Vernacular = "Yoink";
+            modWord.Vernacular = "NewVernacular";
 
-            var id = (_wordController.Put(_projId, modWord.Id, modWord).Result as ObjectResult).Value as string;
+            var id = (string)((ObjectResult)_wordController.Put(_projId, modWord.Id, modWord).Result).Value;
 
             var finalWord = modWord.Clone();
             finalWord.Id = id;
@@ -155,7 +157,7 @@ namespace Backend.Tests.Controllers
             var origWord = _repo.Create(RandomWord()).Result;
 
             // Test delete function
-            var action = _wordController.Delete(_projId, origWord.Id).Result;
+            _ = _wordController.Delete(_projId, origWord.Id).Result;
 
             // Original word persists
             Assert.Contains(origWord, _repo.GetAllWords(_projId).Result);
@@ -210,6 +212,11 @@ namespace Backend.Tests.Controllers
             // Check that new word has the right history
             Assert.That(newWords.First().History, Has.Count.EqualTo(1));
             var intermediateWord = _repo.GetWord(_projId, newWords.First().History.First()).Result;
+            if (intermediateWord is null)
+            {
+                Assert.Fail();
+                return;
+            }
             Assert.That(intermediateWord.History, Has.Count.EqualTo(1));
             Assert.AreEqual(intermediateWord.History.First(), thisWord.Id);
         }
@@ -242,18 +249,24 @@ namespace Backend.Tests.Controllers
             var newWordList = _wordService.Merge(_projId, parentChildMergeObject).Result;
 
             // Check for parent is in the db
-            var dbParent = newWordList.FirstOrDefault();
-            Assert.IsNotNull(dbParent);
+            var dbParent = newWordList.First();
             Assert.AreEqual(dbParent.Senses.Count, 3);
             Assert.AreEqual(dbParent.History.Count, 3);
 
-            // Check the separarte words were made
+            // Check that separate words were made
             Assert.AreEqual(newWordList.Count, 4);
 
             foreach (var word in newWordList)
             {
                 Assert.Contains(_repo.GetWord(_projId, word.Id).Result, _repo.GetAllWords(_projId).Result);
             }
+        }
+
+        [Test]
+        public void TestGetMissingWord()
+        {
+            var action = _wordController.Get(_projId, "INVALID_WORD_ID").Result;
+            Assert.IsInstanceOf<NotFoundObjectResult>(action);
         }
     }
 }

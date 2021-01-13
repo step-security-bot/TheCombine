@@ -1,11 +1,16 @@
 import { Avatar, Button, Menu, MenuItem } from "@material-ui/core";
-import { ExitToApp, Person, SettingsApplications } from "@material-ui/icons";
-import React from "react";
+import {
+  ExitToApp,
+  Help,
+  Person,
+  SettingsApplications,
+} from "@material-ui/icons";
+import React, { useState } from "react";
 import { Translate } from "react-localize-redux";
 
 import { getUser } from "../../backend";
 import * as LocalStorage from "../../backend/localStorage";
-import history from "../../history";
+import history, { Path } from "../../history";
 import theme from "../../types/theme";
 import { User } from "../../types/user";
 
@@ -25,11 +30,9 @@ export async function getIsAdmin(): Promise<boolean> {
  * Avatar in appbar with dropdown UserMenu
  */
 export default function UserMenu() {
-  const [anchorElement, setAnchorElement] = React.useState<null | HTMLElement>(
-    null
-  );
+  const [anchorElement, setAnchorElement] = useState<null | HTMLElement>(null);
   const avatar = LocalStorage.getAvatar();
-  const [isAdmin, setIsAdmin] = React.useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
     setAnchorElement(event.currentTarget);
@@ -47,6 +50,7 @@ export default function UserMenu() {
         aria-controls="user-menu"
         aria-haspopup="true"
         onClick={handleClick}
+        color="secondary"
       >
         {avatar ? (
           <Avatar alt="User avatar" src={avatar} />
@@ -69,7 +73,7 @@ export default function UserMenu() {
           horizontal: "right",
         }}
       >
-        <UserMenuList isAdmin={isAdmin} />
+        <UserMenuList isAdmin={isAdmin} onSelect={handleClose} />
       </Menu>
     </React.Fragment>
   );
@@ -77,6 +81,7 @@ export default function UserMenu() {
 
 interface UserMenuListProps {
   isAdmin: boolean;
+  onSelect: () => void;
 }
 
 /**
@@ -91,7 +96,8 @@ export function UserMenuList(props: UserMenuListProps) {
         <MenuItem
           onClick={() => {
             LocalStorage.setProjectId("");
-            history.push("/site-settings");
+            history.push(Path.SiteSettings);
+            props.onSelect();
           }}
         >
           <SettingsApplications style={{ marginRight: theme.spacing(1) }} />
@@ -101,7 +107,8 @@ export function UserMenuList(props: UserMenuListProps) {
 
       <MenuItem
         onClick={() => {
-          history.push("/user-settings");
+          history.push(Path.UserSettings);
+          props.onSelect();
         }}
       >
         <Person style={{ marginRight: theme.spacing(1) }} />
@@ -110,12 +117,25 @@ export function UserMenuList(props: UserMenuListProps) {
 
       <MenuItem
         onClick={() => {
-          history.push("/login");
+          // This link does not work in development, but should in production.
+          window.open(`docs`);
+          props.onSelect();
+        }}
+      >
+        <Help style={{ marginRight: theme.spacing(1) }} />
+        <Translate id="userMenu.userGuide" />
+      </MenuItem>
+
+      <MenuItem
+        onClick={() => {
+          history.push(Path.Login);
+          props.onSelect();
         }}
       >
         <ExitToApp style={{ marginRight: theme.spacing(1) }} />
         <Translate id="userMenu.logout" />
       </MenuItem>
+
       <MenuItem disabled style={{ justifyContent: "center" }}>
         v{REACT_APP_VERSION}
       </MenuItem>

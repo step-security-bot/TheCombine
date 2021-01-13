@@ -31,13 +31,13 @@ namespace BackendFramework.Controllers
         public async Task<IActionResult> DownloadAvatar(string userId)
         {
             var avatar = await _userService.GetUserAvatar(userId);
-            if (avatar == null)
+            if (avatar is null)
             {
                 return new NotFoundObjectResult(userId);
             }
 
-            var image = System.IO.File.OpenRead(avatar);
-            return File(image, "image/jpeg");
+            var imageFile = System.IO.File.OpenRead(avatar);
+            return File(imageFile, "application/octet-stream");
         }
 
         /// <summary>
@@ -54,33 +54,37 @@ namespace BackendFramework.Controllers
             }
 
             var file = fileUpload.File;
+            if (file is null)
+            {
+                return new BadRequestObjectResult("Null File");
+            }
 
-            // Ensure file is not empty
+            // Ensure file is not empty.
             if (file.Length == 0)
             {
                 return new BadRequestObjectResult("Empty File");
             }
 
-            // Get user to apply avatar to
-            var gotUser = await _userService.GetUser(userId);
-            if (gotUser == null)
+            // Get user to apply avatar to.
+            var user = await _userService.GetUser(userId);
+            if (user is null)
             {
                 return new NotFoundObjectResult(userId);
             }
 
-            // Get path to home
-            fileUpload.FilePath = FileUtilities.GenerateFilePath(
-                FileUtilities.FileType.Avatar, false, userId, "Avatars");
+            // Generate path to store avatar file.
+            fileUpload.FilePath = FileStorage.GenerateAvatarFilePath(userId);
 
-            // Copy file data to a new local file
+            // Copy file data to a new local file.
             await using (var fs = new FileStream(fileUpload.FilePath, FileMode.OpenOrCreate))
             {
                 await file.CopyToAsync(fs);
             }
 
-            // Update the user's avatar file
-            gotUser.Avatar = fileUpload.FilePath;
-            _ = await _userService.Update(userId, gotUser);
+            // Update the user's avatar file.
+            user.Avatar = fileUpload.FilePath;
+            user.HasAvatar = true;
+            _ = await _userService.Update(userId, user);
 
             return new OkResult();
         }

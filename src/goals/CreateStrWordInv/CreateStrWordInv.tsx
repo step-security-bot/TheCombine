@@ -1,38 +1,7 @@
-import {
-  Goal,
-  GoalData,
-  Tools,
-  GoalOption,
-  GoalType,
-  GoalStep,
-  generateGuid,
-} from "../../types/goals";
-import { User } from "../../types/user";
+import { Goal, GoalName, GoalType } from "../../types/goals";
 
-export class CreateStrWordInv implements Goal {
-  goalType: GoalType;
-  name: string;
-  user: User;
-  steps: GoalStep[];
-  numSteps: number;
-  currentStep: number;
-  data: GoalData;
-  tool: Tools;
-  completed: boolean;
-  result: GoalOption;
-  hash: string;
-
-  constructor(steps: GoalStep[] = [], numSteps: number = 8) {
-    this.goalType = GoalType.CreateStrWordInv;
-    this.name = "createStrWordInv";
-    this.user = new User("", "", "");
-    this.steps = steps;
-    this.numSteps = numSteps;
-    this.currentStep = 0;
-    this.data = {};
-    this.tool = Tools.TempTool;
-    this.completed = false;
-    this.result = GoalOption.Current;
-    this.hash = generateGuid();
+export class CreateStrWordInv extends Goal {
+  constructor() {
+    super(GoalType.CreateStrWordInv, GoalName.CreateStrWordInv);
   }
 }

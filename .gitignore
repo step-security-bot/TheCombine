@@ -14,8 +14,7 @@
 
 # Generated Docker files for development use
 docker-compose.yml
-.env.backend
-.env.frontend
+.env.*
 .env*.local
 nginx/scripts
 
@@ -53,6 +52,9 @@ Backend.Tests/bin/Audio/*.mp3
 /**/*.swp
 Backend.Tests/bin/Avatars/*
 mongo_database
+
+# User Guide
+user_guide/site
 
 # Vagrant instances
 .vagrant/

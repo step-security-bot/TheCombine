@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Threading.Tasks;
 using BackendFramework.Interfaces;
 using BackendFramework.Models;
 using Microsoft.AspNetCore.Http;
@@ -42,7 +44,7 @@ namespace BackendFramework.Services
             return userId == foundUserId;
         }
 
-        public static List<ProjectPermissions> GetProjectPermissions(HttpContext request)
+        private static List<ProjectPermissions> GetProjectPermissions(HttpContext request)
         {
             var jsonToken = GetJwt(request);
             var userRoleInfo = ((JwtSecurityToken)jsonToken).Payload["UserRoleInfo"].ToString();
@@ -50,10 +52,14 @@ namespace BackendFramework.Services
             return permissionsObj;
         }
 
-        public bool HasProjectPermission(HttpContext request, Permission permission)
+        public async Task<bool> HasProjectPermission(HttpContext request, Permission permission)
         {
             var userId = GetUserId(request);
-            var user = _userService.GetUser(userId).Result;
+            var user = await _userService.GetUser(userId);
+            if (user is null)
+            {
+                return false;
+            }
 
             // Database administrators implicitly possess all permissions.
             if (user.IsAdmin)
@@ -90,11 +96,16 @@ namespace BackendFramework.Services
             return false;
         }
 
-        public bool IsViolationEdit(HttpContext request, string userEditId, string projectId)
+        public async Task<bool> IsViolationEdit(HttpContext request, string userEditId, string projectId)
         {
             var userId = GetUserId(request);
-            var userObj = _userService.GetUser(userId).Result;
-            return userObj.WorkedProjects[projectId] != userEditId;
+            var user = await _userService.GetUser(userId);
+            if (user is null)
+            {
+                return true;
+            }
+
+            return user.WorkedProjects[projectId] != userEditId;
         }
 
         /// <summary>Retrieve the User ID from the JWT in a request. </summary>
@@ -102,7 +113,27 @@ namespace BackendFramework.Services
         {
             var jsonToken = GetJwt(request);
             var userId = ((JwtSecurityToken)jsonToken).Payload["UserId"].ToString();
+            if (userId is null)
+            {
+                throw new InvalidJwtTokenError();
+            }
+
             return userId;
+        }
+
+        [Serializable]
+        public class InvalidJwtTokenError : Exception
+        {
+            public InvalidJwtTokenError()
+            { }
+
+            public InvalidJwtTokenError(string message)
+                : base(message)
+            { }
+
+            public InvalidJwtTokenError(string message, Exception innerException)
+                : base(message, innerException)
+            { }
         }
     }
 }

@@ -5,7 +5,7 @@ using BackendFramework.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
-using static BackendFramework.Helper.FileUtilities;
+using BackendFramework.Helper;
 
 namespace BackendFramework.Controllers
 {
@@ -30,14 +30,10 @@ namespace BackendFramework.Controllers
 
         /// <summary> Returns the audio file in the form of a stream from disk</summary>
         /// <remarks> GET: v1/projects/{projectId}/words/{wordId}/download/audio </remarks>
-        /// <returns> Audio file stream </returns>
+        /// <returns> Audio file stream. </returns>
         [AllowAnonymous]
         [HttpGet("{wordId}/download/audio/{fileName}")]
-        // Temporarily disable warning about missing await in this method.
-        // It's needed for the return type to be correct, but nothing inside the function is awaiting yet.
-#pragma warning disable 1998
-        public async Task<IActionResult> DownloadAudioFile(string projectId, string wordId, string fileName)
-#pragma warning restore 1998
+        public IActionResult DownloadAudioFile(string projectId, string wordId, string fileName)
         {
             // if we require authorization and authentication for audio files, the frontend cannot just use the api
             // endpoint as the src
@@ -46,30 +42,26 @@ namespace BackendFramework.Controllers
             //    return new ForbidResult();
             //}
 
-            // sanitize user input
-            if (!SanitizeId(projectId) || !SanitizeId(wordId))
+            // Sanitize user input
+            if (!Sanitization.SanitizeId(projectId) || !Sanitization.SanitizeId(wordId) ||
+                !Sanitization.SanitizeFileName(fileName))
             {
                 return new UnsupportedMediaTypeResult();
             }
 
-            var filePath = _wordService.GetAudioFilePath(projectId, wordId, fileName);
-            if (filePath == null)
-            {
-                return new BadRequestObjectResult("There was more than one subDir of the extracted zip");
-            }
-
-            Stream stream = System.IO.File.OpenRead(filePath);
-            if (stream == null)
+            var filePath = FileStorage.GenerateAudioFilePath(projectId, fileName);
+            var file = System.IO.File.OpenRead(filePath);
+            if (file is null)
             {
                 return new BadRequestObjectResult("The file does not exist");
             }
 
-            return File(stream, "video/webm");
+            return File(file, "application/octet-stream");
         }
 
         /// <summary>
-        /// Adds a pronunciation <see cref="FileUpload"/> to a <see cref="Word"/> and saves locally to
-        /// ~/.CombineFiles/{ProjectId}/ExtractedLocation/Import/ExtractedLocation/Lift/audio
+        /// Adds a pronunciation <see cref="FileUpload"/> to a <see cref="Word"/> and saves
+        /// locally to ~/.CombineFiles/{ProjectId}/Import/ExtractedLocation/Lift/audio
         /// </summary>
         /// <remarks> POST: v1/projects/{projectId}/words/{wordId}/upload/audio </remarks>
         /// <returns> Path to local audio file </returns>
@@ -77,18 +69,22 @@ namespace BackendFramework.Controllers
         public async Task<IActionResult> UploadAudioFile(string projectId, string wordId,
             [FromForm] FileUpload fileUpload)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // sanitize user input
-            if (!SanitizeId(projectId) || !SanitizeId(wordId))
+            if (!Sanitization.SanitizeId(projectId) || !Sanitization.SanitizeId(wordId))
             {
                 return new UnsupportedMediaTypeResult();
             }
 
             var file = fileUpload.File;
+            if (file is null)
+            {
+                return new BadRequestObjectResult("Null File");
+            }
 
             // Ensure file is not empty
             if (file.Length == 0)
@@ -96,10 +92,9 @@ namespace BackendFramework.Controllers
                 return new BadRequestObjectResult("Empty File");
             }
 
-            // Get path to home
-            fileUpload.FilePath = GenerateFilePath(
-                FileType.Audio, false, wordId,
-                Path.Combine(projectId, "Import", "ExtractedLocation", "Lift", "audio"));
+            // This path should be unique even though it is only based on the Word ID because currently, a new
+            // Word is created each time an audio file is uploaded.
+            fileUpload.FilePath = FileStorage.GenerateAudioFilePathForWord(projectId, wordId);
 
             // Copy the file data to a new local file
             await using (var fs = new FileStream(fileUpload.FilePath, FileMode.Create))
@@ -108,13 +103,17 @@ namespace BackendFramework.Controllers
             }
 
             // Add the relative path to the audio field
-            var gotWord = await _wordRepo.GetWord(projectId, wordId);
-            gotWord.Audio.Add(Path.GetFileName(fileUpload.FilePath));
+            var word = await _wordRepo.GetWord(projectId, wordId);
+            if (word is null)
+            {
+                return new NotFoundObjectResult(wordId);
+            }
+            word.Audio.Add(Path.GetFileName(fileUpload.FilePath));
 
             // Update the word with new audio file
-            await _wordService.Update(projectId, wordId, gotWord);
+            await _wordService.Update(projectId, wordId, word);
 
-            return new ObjectResult(gotWord.Id);
+            return new ObjectResult(word.Id);
         }
 
         /// <summary> Deletes audio in <see cref="Word"/> with specified ID </summary>
@@ -122,19 +121,18 @@ namespace BackendFramework.Controllers
         [HttpDelete("{wordId}/audio/delete/{fileName}")]
         public async Task<IActionResult> Delete(string projectId, string wordId, string fileName)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // sanitize user input
-            if (!SanitizeId(projectId) || !SanitizeId(wordId))
+            if (!Sanitization.SanitizeId(projectId) || !Sanitization.SanitizeId(wordId))
             {
                 return new UnsupportedMediaTypeResult();
             }
 
             var newWord = await _wordService.Delete(projectId, wordId, fileName);
-
             if (newWord != null)
             {
                 return new OkObjectResult(newWord.Id);

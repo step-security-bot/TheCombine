@@ -31,14 +31,14 @@ namespace BackendFramework.Controllers
         [HttpGet]
         public async Task<IActionResult> Get(string projectId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -52,14 +52,14 @@ namespace BackendFramework.Controllers
         [HttpDelete]
         public async Task<IActionResult> Delete(string projectId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -72,20 +72,20 @@ namespace BackendFramework.Controllers
         [HttpGet("{userRoleId}")]
         public async Task<IActionResult> Get(string projectId, string userRoleId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             var userRole = await _userRoleService.GetUserRole(projectId, userRoleId);
-            if (userRole == null)
+            if (userRole is null)
             {
                 return new NotFoundObjectResult(userRoleId);
             }
@@ -99,7 +99,7 @@ namespace BackendFramework.Controllers
         [HttpPost]
         public async Task<IActionResult> Post(string projectId, [FromBody] UserRole userRole)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DeleteEditSettingsAndUsers))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DeleteEditSettingsAndUsers))
             {
                 return new ForbidResult();
             }
@@ -107,18 +107,13 @@ namespace BackendFramework.Controllers
             userRole.ProjectId = projectId;
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
-            var returnUserRole = await _userRoleService.Create(userRole);
-            if (returnUserRole == null)
-            {
-                return BadRequest();
-            }
-
+            await _userRoleService.Create(userRole);
             return new OkObjectResult(userRole.Id);
         }
 
@@ -127,14 +122,14 @@ namespace BackendFramework.Controllers
         [HttpDelete("{userRoleId}")]
         public async Task<IActionResult> Delete(string projectId, string userRoleId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -152,31 +147,25 @@ namespace BackendFramework.Controllers
         [HttpPut("{userRoleId}")]
         public async Task<IActionResult> Put(string projectId, string userRoleId, [FromBody] UserRole userRole)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DeleteEditSettingsAndUsers))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DeleteEditSettingsAndUsers))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             var result = await _userRoleService.Update(userRoleId, userRole);
-            if (result == ResultOfUpdate.NotFound)
+            return result switch
             {
-                return new NotFoundObjectResult(userRoleId);
-            }
-            else if (result == ResultOfUpdate.Updated)
-            {
-                return new OkObjectResult(userRoleId);
-            }
-            else
-            {
-                return new StatusCodeResult(304);
-            }
+                ResultOfUpdate.NotFound => new NotFoundObjectResult(userRoleId),
+                ResultOfUpdate.Updated => new OkObjectResult(userRoleId),
+                _ => new StatusCodeResult(304)
+            };
         }
     }
 }

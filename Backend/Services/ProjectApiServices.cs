@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 using BackendFramework.Helper;
 using BackendFramework.Interfaces;
@@ -41,14 +40,21 @@ namespace BackendFramework.Services
         }
 
         /// <summary> Finds <see cref="Project"/> with specified projectId </summary>
-        public async Task<Project> GetProject(string projectId)
+        /// <returns> Project or null if the Project does not exist. </returns>
+        public async Task<Project?> GetProject(string projectId)
         {
             var filterDef = new FilterDefinitionBuilder<Project>();
             var filter = filterDef.Eq(x => x.Id, projectId);
 
             var projectList = await _projectDatabase.Projects.FindAsync(filter);
-
-            return projectList.FirstOrDefault();
+            try
+            {
+                return await projectList.FirstAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
         }
 
         /// <summary> Adds a <see cref="Project"/> </summary>
@@ -77,6 +83,7 @@ namespace BackendFramework.Services
             var updateDef = Builders<Project>.Update
                 .Set(x => x.Name, project.Name)
                 .Set(x => x.IsActive, project.IsActive)
+                .Set(x => x.LiftImported, project.LiftImported)
                 .Set(x => x.SemanticDomains, project.SemanticDomains)
                 .Set(x => x.VernacularWritingSystem, project.VernacularWritingSystem)
                 .Set(x => x.AnalysisWritingSystems, project.AnalysisWritingSystems)
@@ -94,14 +101,13 @@ namespace BackendFramework.Services
             {
                 return ResultOfUpdate.NotFound;
             }
-            else if (updateResult.ModifiedCount > 0)
+
+            if (updateResult.ModifiedCount > 0)
             {
                 return ResultOfUpdate.Updated;
             }
-            else
-            {
-                return ResultOfUpdate.NoChange;
-            }
+
+            return ResultOfUpdate.NoChange;
         }
 
         public async Task<string> CreateLinkWithToken(Project project, string emailAddress)
@@ -150,8 +156,13 @@ namespace BackendFramework.Services
                 user.ProjectRoles.Add(project.Id, userRole.Id);
                 await _userService.Update(user.Id, user);
                 // Generate the JWT based on those new userRoles
-                user = await _userService.MakeJwt(user);
-                await _userService.Update(user.Id, user);
+                var updatedUser = await _userService.MakeJwt(user);
+                if (updatedUser is null)
+                {
+                    throw new Exception("Unable to generate JWT.");
+                }
+
+                await _userService.Update(updatedUser.Id, updatedUser);
 
                 // Removes token and updates user
 
@@ -179,12 +190,15 @@ namespace BackendFramework.Services
             return false;
         }
 
-        public bool CanImportLift(string projectId)
+        public async Task<bool> CanImportLift(string projectId)
         {
-            var currentPath = FileUtilities.GenerateFilePath(
-                FileUtilities.FileType.Dir, true, "", Path.Combine(projectId, "Import"));
-            var zips = new List<string>(Directory.GetFiles(currentPath, "*.zip"));
-            return zips.Count == 0;
+            var project = await GetProject(projectId);
+            if (project is null)
+            {
+                return false;
+            }
+
+            return !project.LiftImported;
         }
     }
 }

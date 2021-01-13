@@ -5,7 +5,7 @@ import { LocalizeContextProps, withLocalize } from "react-localize-redux";
 import { getAllProjects } from "../../../backend";
 import { Project } from "../../../types/project";
 import theme from "../../../types/theme";
-import ExportProjectButton from "../../ProjectSettings/ProjectExport/ExportProjectButton";
+import ExportProjectButton from "../../ProjectExport";
 import ProjectButtonWithConfirmation from "./ProjectButtonWithConfirmation";
 
 interface ProjectManagementState {
@@ -49,7 +49,7 @@ export class ProjectManagement extends React.Component<
           {/* Export Lift file */}
           <ExportProjectButton
             projectId={project.id}
-            style={{ marginRight: theme.spacing(1) }}
+            buttonProps={{ style: { marginRight: theme.spacing(1) } }}
           />
           {/* Archive active project or restore archived project. */}
           <ProjectButtonWithConfirmation

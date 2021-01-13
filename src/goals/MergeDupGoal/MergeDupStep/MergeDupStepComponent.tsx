@@ -20,11 +20,7 @@ import {
   Droppable,
   DropResult,
 } from "react-beautiful-dnd";
-import {
-  LocalizeContextProps,
-  Translate,
-  withLocalize,
-} from "react-localize-redux";
+import { LocalizeContextProps, withLocalize } from "react-localize-redux";
 
 import theme from "../../../types/theme";
 import { uuid } from "../../../utilities";
@@ -296,21 +292,22 @@ class MergeDupStep extends React.Component<
           <Button
             color="primary"
             variant="contained"
-            style={{
-              float: "right",
-              marginRight: 30,
-            }}
+            style={{ float: "right", marginRight: 30 }}
             onClick={(_) => this.saveContinue()}
-            title={this.props.translate("mergeDups.helpText.next") as string}
+            title={
+              this.props.translate(
+                "mergeDups.helpText.saveAndContinue"
+              ) as string
+            }
           >
-            <Translate id="goal.mergeDups.done" />
+            {this.props.translate("buttons.saveAndContinue")}
           </Button>
           <Button
             style={{ float: "right", marginRight: 30 }}
             onClick={(_) => this.next()}
             title={this.props.translate("mergeDups.helpText.skip") as string}
           >
-            <Translate id="goal.mergeDups.skip" />
+            {this.props.translate("buttons.skip")}
           </Button>
         </Paper>
       </Box>
@@ -318,5 +315,4 @@ class MergeDupStep extends React.Component<
   }
 }
 
-//export class as default
 export default withLocalize(MergeDupStep);

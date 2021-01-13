@@ -35,14 +35,14 @@ namespace BackendFramework.Controllers
         [HttpGet]
         public async Task<IActionResult> Get(string projectId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -60,14 +60,14 @@ namespace BackendFramework.Controllers
 #pragma warning restore 1998
         {
 #if DEBUG
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -83,20 +83,20 @@ namespace BackendFramework.Controllers
         [HttpGet("{userEditId}")]
         public async Task<IActionResult> Get(string projectId, string userEditId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             var userEdit = await _repo.GetUserEdit(projectId, userEditId);
-            if (userEdit == null)
+            if (userEdit is null)
             {
                 return new NotFoundObjectResult(userEditId);
             }
@@ -109,7 +109,7 @@ namespace BackendFramework.Controllers
         [HttpPost]
         public async Task<IActionResult> Post(string projectId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.MergeAndCharSet))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.MergeAndCharSet))
             {
                 return new ForbidResult();
             }
@@ -120,14 +120,24 @@ namespace BackendFramework.Controllers
             // Update current user
             var currentUserId = _permissionService.GetUserId(HttpContext);
             var currentUser = await _userService.GetUser(currentUserId);
+            if (currentUser is null)
+            {
+                return new NotFoundObjectResult(currentUserId);
+            }
+
             currentUser.WorkedProjects.Add(projectId, userEdit.Id);
             await _userService.Update(currentUserId, currentUser);
+
             // Generate the JWT based on the new userEdit
-            currentUser = await _userService.MakeJwt(currentUser);
-            await _userService.Update(currentUserId, currentUser);
+            var currentUpdatedUser = await _userService.MakeJwt(currentUser);
+            if (currentUpdatedUser is null)
+            {
+                return new BadRequestObjectResult("Invalid JWT Token supplied.");
+            }
 
-            var output = new WithUser() { UpdatedUser = currentUser };
+            await _userService.Update(currentUserId, currentUpdatedUser);
 
+            var output = new WithUser(currentUpdatedUser);
             return new OkObjectResult(output);
         }
 
@@ -137,27 +147,27 @@ namespace BackendFramework.Controllers
         [HttpPost("{userEditId}")]
         public async Task<IActionResult> Post(string projectId, string userEditId, [FromBody] Edit newEdit)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Check to see if user is changing the correct user edit
-            if (_permissionService.IsViolationEdit(HttpContext, userEditId, projectId))
+            if (await _permissionService.IsViolationEdit(HttpContext, userEditId, projectId))
             {
                 return new BadRequestObjectResult("You can not edit another users UserEdit");
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             // Ensure userEdit exists
             var toBeMod = await _repo.GetUserEdit(projectId, userEditId);
-            if (toBeMod == null)
+            if (toBeMod is null)
             {
                 return new NotFoundObjectResult(userEditId);
             }
@@ -169,10 +179,8 @@ namespace BackendFramework.Controllers
             {
                 return new OkObjectResult(editIndex);
             }
-            else
-            {
-                return new NotFoundObjectResult(editIndex);
-            }
+
+            return new NotFoundObjectResult(editIndex);
         }
 
         /// <summary> Adds a step to specified goal </summary>
@@ -182,27 +190,27 @@ namespace BackendFramework.Controllers
         public async Task<IActionResult> Put(string projectId, string userEditId,
             [FromBody] UserEditObjectWrapper userEdit)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Check to see if user is changing the correct user edit
-            if (_permissionService.IsViolationEdit(HttpContext, userEditId, projectId))
+            if (await _permissionService.IsViolationEdit(HttpContext, userEditId, projectId))
             {
                 return new BadRequestObjectResult("You can not edit another users UserEdit");
             }
 
-            // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            // Ensure project exists.
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             // Ensure userEdit exists
             var document = await _repo.GetUserEdit(projectId, userEditId);
-            if (document == null)
+            if (document is null)
             {
                 return new NotFoundResult();
             }
@@ -223,14 +231,14 @@ namespace BackendFramework.Controllers
         [HttpDelete("{userEditId}")]
         public async Task<IActionResult> Delete(string projectId, string userEditId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }

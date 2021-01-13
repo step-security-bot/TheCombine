@@ -34,14 +34,14 @@ namespace BackendFramework.Controllers
         [HttpGet]
         public async Task<IActionResult> Get(string projectId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -55,14 +55,14 @@ namespace BackendFramework.Controllers
         [HttpDelete]
         public async Task<IActionResult> Delete(string projectId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -75,23 +75,24 @@ namespace BackendFramework.Controllers
         [HttpGet("{wordId}")]
         public async Task<IActionResult> Get(string projectId, string wordId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             var word = await _wordRepo.GetWord(projectId, wordId);
-            if (word == null)
+            if (word is null)
             {
                 return new NotFoundObjectResult(wordId);
             }
+
             return new ObjectResult(word);
         }
 
@@ -101,14 +102,14 @@ namespace BackendFramework.Controllers
         [HttpPost]
         public async Task<IActionResult> Post(string projectId, [FromBody] Word word)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -134,21 +135,21 @@ namespace BackendFramework.Controllers
         [HttpPut("{wordId}")]
         public async Task<IActionResult> Put(string projectId, string wordId, [FromBody] Word word)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
 
             // Ensure word exists
             var document = await _wordRepo.GetWord(projectId, wordId);
-            if (document == null)
+            if (document is null)
             {
                 return new NotFoundResult();
             }
@@ -165,14 +166,14 @@ namespace BackendFramework.Controllers
         [HttpDelete("{wordId}")]
         public async Task<IActionResult> Delete(string projectId, string wordId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
             }
@@ -190,22 +191,16 @@ namespace BackendFramework.Controllers
         [HttpPut]
         public async Task<IActionResult> Put(string projectId, [FromBody] MergeWords mergeWords)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.MergeAndCharSet))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.MergeAndCharSet))
             {
                 return new ForbidResult();
             }
 
             // Ensure project exists
-            var proj = _projectService.GetProject(projectId);
-            if (proj == null)
+            var proj = await _projectService.GetProject(projectId);
+            if (proj is null)
             {
                 return new NotFoundObjectResult(projectId);
-            }
-
-            // Ensure MergeWords is alright
-            if (mergeWords?.Parent == null)
-            {
-                return new BadRequestResult();
             }
 
             try

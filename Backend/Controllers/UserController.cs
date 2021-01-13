@@ -37,16 +37,16 @@ namespace BackendFramework.Controllers
         [HttpPost("forgot")]
         public async Task<IActionResult> ResetPasswordRequest([FromBody] PasswordResetData data)
         {
-            // find user attached to email or username
+            // Find user attached to email or username.
             var emailOrUsername = data.EmailOrUsername.ToLowerInvariant();
-            var user = _userService.GetAllUsers().Result.SingleOrDefault(user =>
-                user.Email.ToLowerInvariant().Equals(emailOrUsername) ||
-                user.Username.ToLowerInvariant().Equals(emailOrUsername));
+            var user = (await _userService.GetAllUsers()).SingleOrDefault(u =>
+                u.Email.ToLowerInvariant().Equals(emailOrUsername) ||
+                u.Username.ToLowerInvariant().Equals(emailOrUsername));
 
-            // create password reset
+            // Create password reset.
             var resetRequest = await _passwordResetService.CreatePasswordReset(user.Email);
 
-            // create email
+            // Create email.
             var message = new MimeMessage();
             message.To.Add(new MailboxAddress(user.Name, user.Email));
             message.Subject = "Combine password reset";
@@ -60,10 +60,8 @@ namespace BackendFramework.Controllers
             {
                 return new OkResult();
             }
-            else
-            {
-                return new InternalServerErrorResult();
-            }
+
+            return new InternalServerErrorResult();
         }
 
 
@@ -78,10 +76,8 @@ namespace BackendFramework.Controllers
             {
                 return new OkResult();
             }
-            else
-            {
-                return new ForbidResult();
-            }
+
+            return new ForbidResult();
         }
 
         /// <summary> Returns all <see cref="User"/>s </summary>
@@ -89,7 +85,7 @@ namespace BackendFramework.Controllers
         [HttpGet("projects/{projectId}/allusers")]
         public async Task<IActionResult> GetAllUsers()
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DeleteEditSettingsAndUsers))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DeleteEditSettingsAndUsers))
             {
                 return new ForbidResult();
             }
@@ -103,7 +99,7 @@ namespace BackendFramework.Controllers
         [HttpDelete]
         public async Task<IActionResult> Delete()
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
             {
                 return new ForbidResult();
             }
@@ -120,7 +116,7 @@ namespace BackendFramework.Controllers
             try
             {
                 var user = await _userService.Authenticate(cred.Username, cred.Password);
-                if (user == null)
+                if (user is null)
                 {
                     return new UnauthorizedResult();
                 }
@@ -144,9 +140,9 @@ namespace BackendFramework.Controllers
             }
 
             var user = await _userService.GetUser(userId);
-            if (user == null)
+            if (user is null)
             {
-                return new NotFoundResult();
+                return new NotFoundObjectResult(userId);
             }
 
             return new ObjectResult(user);
@@ -160,7 +156,7 @@ namespace BackendFramework.Controllers
         public async Task<IActionResult> Post([FromBody] User user)
         {
             var returnUser = await _userService.Create(user);
-            if (returnUser == null)
+            if (returnUser is null)
             {
                 return BadRequest();
             }
@@ -175,8 +171,7 @@ namespace BackendFramework.Controllers
         [HttpPost("checkusername/{username}")]
         public async Task<IActionResult> CheckUsername(string username)
         {
-            var usernameTaken = (await _userService.GetAllUsers()).Find(x =>
-                x.Username.ToLowerInvariant() == username.ToLowerInvariant()) != null;
+            var usernameTaken = (await _userService.GetUserIdByUsername(username)) != null;
             if (usernameTaken)
             {
                 return BadRequest();
@@ -192,8 +187,7 @@ namespace BackendFramework.Controllers
         [HttpPost("checkemail/{email}")]
         public async Task<IActionResult> CheckEmail(string email)
         {
-            var emailTaken = (await _userService.GetAllUsers()).Find(x =>
-                x.Email.ToLowerInvariant() == email.ToLowerInvariant()) != null;
+            var emailTaken = (await _userService.GetUserIdByEmail(email)) != null;
             if (emailTaken)
             {
                 return BadRequest();
@@ -220,18 +214,12 @@ namespace BackendFramework.Controllers
             // }
 
             var result = await _userService.Update(userId, user);
-            if (result == ResultOfUpdate.NotFound)
+            return result switch
             {
-                return new NotFoundObjectResult(userId);
-            }
-            else if (result == ResultOfUpdate.Updated)
-            {
-                return new OkObjectResult(userId);
-            }
-            else // Not updated
-            {
-                return new StatusCodeResult(304);
-            }
+                ResultOfUpdate.NotFound => new NotFoundObjectResult(userId),
+                ResultOfUpdate.Updated => new OkObjectResult(userId),
+                _ => new StatusCodeResult(304)
+            };
         }
 
         /// <summary> Deletes <see cref="User"/> with specified id </summary>
@@ -239,7 +227,7 @@ namespace BackendFramework.Controllers
         [HttpDelete("{userId}")]
         public async Task<IActionResult> Delete(string userId)
         {
-            if (!_permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.DatabaseAdmin))
             {
                 return new ForbidResult();
             }
@@ -253,10 +241,18 @@ namespace BackendFramework.Controllers
 
         public class PasswordResetData
         {
-            public string EmailOrUsername;
-            public string Token;
-            public string NewPassword;
-            public string Domain;
+            public readonly string EmailOrUsername;
+            public readonly string Token;
+            public readonly string NewPassword;
+            public readonly string Domain;
+
+            public PasswordResetData()
+            {
+                EmailOrUsername = "";
+                Token = "";
+                NewPassword = "";
+                Domain = "";
+            }
         }
     }
 }

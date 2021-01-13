@@ -21,7 +21,6 @@ namespace BackendFramework
     public class Startup
     {
         private const string AllowedOrigins = "AllowAll";
-        private const int DefaultPasswordResetExpireTime = 15;
 
         private readonly ILogger<Startup> _logger;
 
@@ -35,33 +34,41 @@ namespace BackendFramework
 
         public class Settings
         {
+            public const int DefaultPasswordResetExpireTime = 15;
+
             public string ConnectionString { get; set; }
             public string CombineDatabase { get; set; }
-            public string SmtpServer { get; set; }
-            public int SmtpPort { get; set; }
-            public string SmtpUsername { get; set; }
-            public string SmtpPassword { get; set; }
-            public string SmtpAddress { get; set; }
-            public string SmtpFrom { get; set; }
+            public string? SmtpServer { get; set; }
+            public int? SmtpPort { get; set; }
+            public string? SmtpUsername { get; set; }
+            public string? SmtpPassword { get; set; }
+            public string? SmtpAddress { get; set; }
+            public string? SmtpFrom { get; set; }
             public int PassResetExpireTime { get; set; }
+
+            public Settings()
+            {
+                ConnectionString = "";
+                CombineDatabase = "";
+                PassResetExpireTime = DefaultPasswordResetExpireTime;
+            }
         }
 
+        [Serializable]
         private class EnvironmentNotConfiguredException : Exception
         {
         }
 
-        private string CheckedEnvironmentVariable(string name, string defaultValue, string error = "")
+        private string? CheckedEnvironmentVariable(string name, string? defaultValue, string error = "")
         {
             var contents = Environment.GetEnvironmentVariable(name);
             if (contents != null)
             {
                 return contents;
             }
-            else
-            {
-                _logger.LogError($"Environment variable: `{name}` is not defined. {error}");
-                return defaultValue;
-            }
+
+            _logger.LogError($"Environment variable: `{name}` is not defined. {error}");
+            return defaultValue;
         }
 
         /// <summary> Determine if executing within a container (e.g. Docker). </summary>
@@ -70,6 +77,7 @@ namespace BackendFramework
             return Environment.GetEnvironmentVariable("COMBINE_IS_IN_CONTAINER") != null;
         }
 
+        [Serializable]
         private class AdminUserCreationException : Exception
         {
         }
@@ -78,13 +86,17 @@ namespace BackendFramework
         /// </summary>
         public void ConfigureServices(IServiceCollection services)
         {
+            // TODO: When moving to NGINX deployment, can remove this configure.
+            //    CORS isn't needed when a reverse proxy proxies all frontend and backend traffic.
+            var corsOrigin = Environment.GetEnvironmentVariable("COMBINE_CORS_ORIGIN") ?? "http://localhost:3000";
             services.AddCors(options =>
             {
                 options.AddPolicy(AllowedOrigins,
                     builder => builder
                         .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .AllowAnyOrigin());
+                        .WithOrigins(corsOrigin)
+                        .AllowCredentials());
             });
 
             // Configure JWT Authentication
@@ -93,7 +105,7 @@ namespace BackendFramework
 
             // The JWT key size must be at least 128 bits long.
             const int minKeyLength = 128 / 8;
-            if (secretKey == null || secretKey.Length < minKeyLength)
+            if (secretKey is null || secretKey.Length < minKeyLength)
             {
                 _logger.LogError($"Must set {secretKeyEnvName} environment variable " +
                                  $"to string of length {minKeyLength} or longer.");
@@ -128,6 +140,8 @@ namespace BackendFramework
                 //    no longer automatically tries to coerce these values.
                 .AddNewtonsoftJson();
 
+            services.AddSignalR();
+
             services.Configure<Settings>(
                 options =>
                 {
@@ -137,23 +151,37 @@ namespace BackendFramework
 
                     const string emailServiceFailureMessage = "Email services will not work.";
                     options.SmtpServer = CheckedEnvironmentVariable(
-                        "COMBINE_SMTP_SERVER", null, emailServiceFailureMessage);
+                        "COMBINE_SMTP_SERVER",
+                        null,
+                        emailServiceFailureMessage);
                     options.SmtpPort = int.Parse(CheckedEnvironmentVariable(
-                        "COMBINE_SMTP_PORT", IEmailContext.InvalidPort.ToString(), emailServiceFailureMessage));
+                        "COMBINE_SMTP_PORT",
+                        IEmailContext.InvalidPort.ToString(),
+                        emailServiceFailureMessage)!);
                     options.SmtpUsername = CheckedEnvironmentVariable(
-                        "COMBINE_SMTP_USERNAME", null, emailServiceFailureMessage);
+                        "COMBINE_SMTP_USERNAME",
+                        null,
+                        emailServiceFailureMessage);
                     options.SmtpPassword = CheckedEnvironmentVariable(
-                        "COMBINE_SMTP_PASSWORD", null, emailServiceFailureMessage);
+                        "COMBINE_SMTP_PASSWORD",
+                        null,
+                        emailServiceFailureMessage);
                     options.SmtpAddress = CheckedEnvironmentVariable(
-                        "COMBINE_SMTP_ADDRESS", null, emailServiceFailureMessage);
+                        "COMBINE_SMTP_ADDRESS",
+                        null,
+                        emailServiceFailureMessage);
                     options.SmtpFrom = CheckedEnvironmentVariable(
-                        "COMBINE_SMTP_FROM", null, emailServiceFailureMessage);
+                        "COMBINE_SMTP_FROM",
+                        null,
+                        emailServiceFailureMessage);
                     options.PassResetExpireTime = int.Parse(CheckedEnvironmentVariable(
-                        "COMBINE_PASSWORD_RESET_EXPIRE_TIME", DefaultPasswordResetExpireTime.ToString(),
-                        $"Using default value: {DefaultPasswordResetExpireTime}"));
+                        "COMBINE_PASSWORD_RESET_EXPIRE_TIME",
+                        Settings.DefaultPasswordResetExpireTime.ToString(),
+                        $"Using default value: {Settings.DefaultPasswordResetExpireTime}")!);
                 });
 
             // Register concrete types for dependency injection
+
             // Word Types
             services.AddTransient<IWordContext, WordContext>();
             services.AddTransient<IWordService, WordService>();
@@ -164,7 +192,8 @@ namespace BackendFramework
             services.AddScoped<IUserService, UserService>();
             services.AddTransient<IUserService, UserService>();
 
-            // Lift Service - Singleton to avoid initializing the Sldr multiple times, also to avoid leaking LanguageTag data
+            // Lift Service - Singleton to avoid initializing the Sldr multiple times,
+            // also to avoid leaking LanguageTag data
             services.AddSingleton<ILiftService, LiftService>();
 
             // User edit types
@@ -224,7 +253,11 @@ namespace BackendFramework
 
             app.UseAuthentication();
             app.UseAuthorization();
-            app.UseEndpoints(endpoints => { endpoints.MapDefaultControllerRoute(); });
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapDefaultControllerRoute();
+                endpoints.MapHub<CombineHub>("/hub");
+            });
 
             // If an admin user has been created via the commandline, treat that as a single action and shut the
             // server down so the calling script knows it's been completed successfully or unsuccessfully.
@@ -253,14 +286,14 @@ namespace BackendFramework
             const string createAdminPasswordEnv = "COMBINE_ADMIN_PASSWORD";
 
             var username = Configuration.GetValue<string>(createAdminUsernameArg);
-            if (username == null)
+            if (username is null)
             {
                 _logger.LogInformation("No admin user name provided, skipped admin creation");
                 return false;
             }
 
             var password = Environment.GetEnvironmentVariable(createAdminPasswordEnv);
-            if (password == null)
+            if (password is null)
             {
                 _logger.LogError($"Must set {createAdminPasswordEnv} environment variable " +
                                  $"when using {createAdminUsernameArg} command line option.");
@@ -291,7 +324,7 @@ namespace BackendFramework
             _logger.LogInformation($"Creating admin user: {username}");
             var user = new User { Username = username, Password = password, IsAdmin = true };
             var returnedUser = userService.Create(user).Result;
-            if (returnedUser == null)
+            if (returnedUser is null)
             {
                 _logger.LogError("Failed to create admin user.");
                 throw new AdminUserCreationException();

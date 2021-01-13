@@ -144,7 +144,8 @@ interface Foo {}
 
 - Use `PascalCase` for names
 
-> Reason: Convention followed by the TypeScript team. Namespaces are effectively just a class with static members. Class names are `PascalCase` => Namespace names are `PascalCase`
+> Reason: Convention followed by the TypeScript team. Namespaces are effectively just a class with static members. Class
+> names are `PascalCase` => Namespace names are `PascalCase`
 
 **Bad**
 
@@ -178,13 +179,14 @@ enum Color {}
 
 - Use `PascalCase` for enum member
 
-> Reason: Convention followed by TypeScript team i.e. the language creators e.g `SyntaxKind.StringLiteral`. Also helps with translation (code generation) of other languages into TypeScript.
+> Reason: Convention followed by TypeScript team i.e. the language creators e.g `SyntaxKind.StringLiteral`. Also helps
+> with translation (code generation) of other languages into TypeScript.
 
 **Bad**
 
 ```ts
 enum Color {
-  red
+  red,
 }
 ```
 
@@ -192,7 +194,7 @@ enum Color {
 
 ```ts
 enum Color {
-  Red
+  Red,
 }
 ```
 
@@ -200,7 +202,8 @@ enum Color {
 
 - Prefer not to use either for explicit unavailability
 
-> Reason: these values are commonly used to keep a consistent structure between values. In TypeScript you use _types_ to denote the structure
+> Reason: these values are commonly used to keep a consistent structure between values. In TypeScript you use _types_ to
+> denote the structure
 
 **Bad**
 
@@ -258,7 +261,8 @@ if (error === null)
 if (error)
 ```
 
-- Use `== undefined` / `!= undefined` (not `===` / `!==`) to check for `null` / `undefined` on primitives as it works for both `null`/`undefined` but not other falsy values (like `''`,`0`,`false`) e.g.
+- Use `== undefined` / `!= undefined` (not `===` / `!==`) to check for `null` / `undefined` on primitives as it works
+  for both `null`/`undefined` but not other falsy values (like `''`,`0`,`false`) e.g.
 
 **Bad**
 
@@ -288,13 +292,19 @@ Use [Prettier](https://prettier.io/) to format TypeScript code as described in t
 
 - Use semicolons.
 
-> Reasons: Explicit semicolons helps language formatting tools give consistent results. Missing ASI (automatic semicolon insertion) can trip new devs e.g. `foo() \n (function(){})` will be a single statement (not two). TC39 [warning on this as well](https://github.com/tc39/ecma262/pull/1062). Example teams: [airbnb](https://github.com/airbnb/javascript), [idiomatic](https://github.com/rwaldron/idiomatic.js), [google/angular](https://github.com/angular/angular/), [facebook/react](https://github.com/facebook/react), [Microsoft/TypeScript](https://github.com/Microsoft/TypeScript/).
+> Reasons: Explicit semicolons helps language formatting tools give consistent results. Missing ASI (automatic semicolon
+> insertion) can trip new devs e.g. `foo() \n (function(){})` will be a single statement (not two). TC39
+> [warning on this as well](https://github.com/tc39/ecma262/pull/1062). Example teams:
+> [airbnb](https://github.com/airbnb/javascript), [idiomatic](https://github.com/rwaldron/idiomatic.js),
+> [google/angular](https://github.com/angular/angular/), [facebook/react](https://github.com/facebook/react),
+> [Microsoft/TypeScript](https://github.com/Microsoft/TypeScript/).
 
 ## Array
 
 - Annotate arrays as `foos:Foo[]` instead of `foos:Array<Foo>`.
 
-> Reasons: Its easier to read. Its used by the TypeScript team. Makes easier to know something is an array as the mind is trained to detect `[]`.
+> Reasons: Its easier to read. Its used by the TypeScript team. Makes easier to know something is an array as the mind
+> is trained to detect `[]`.
 
 ## Filename
 
@@ -344,7 +354,7 @@ if (isEmpty) {
 ```
 if (isEmpty)
   callFun();
-``` 
+```
 
-> Reason: Avoiding braces can cause developers to miss bugs, such as Apple's infamous 
-> [goto-fail bug](https://nakedsecurity.sophos.com/2014/02/24/anatomy-of-a-goto-fail-apples-ssl-bug-explained-plus-an-unofficial-patch/)  
+> Reason: Avoiding braces can cause developers to miss bugs, such as Apple's infamous
+> [goto-fail bug](https://nakedsecurity.sophos.com/2014/02/24/anatomy-of-a-goto-fail-apples-ssl-bug-explained-plus-an-unofficial-patch/)
