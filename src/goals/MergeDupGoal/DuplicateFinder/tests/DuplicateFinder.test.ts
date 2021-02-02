@@ -1,22 +1,20 @@
-//Sam Delaney, 6/12/19
+import DupFinder, {
+  DefaultParams,
+} from "goals/MergeDupGoal/DuplicateFinder/DuplicateFinder";
+import { simpleWord, testWordList } from "types/word";
 
-import {
-  simpleWord,
-  testWordList as mockTestWordList,
-} from "../../../../types/word";
-import DupFinder, { DefaultParams } from "../DuplicateFinder";
-
-jest.mock("../../../../backend", () => {
+jest.mock("backend", () => {
   return {
-    getFrontierWords: jest.fn(() => {
-      return Promise.resolve(mockTestWordList());
-    }),
+    getFrontierWords: () => mockGetFrontierWords(),
   };
 });
 
 let finder: DupFinder;
+const mockGetFrontierWords = jest.fn();
+
 beforeEach(() => {
   finder = new DupFinder();
+  mockGetFrontierWords.mockResolvedValue(testWordList());
 });
 
 describe("dupFinder", () => {
@@ -31,7 +29,7 @@ describe("dupFinder", () => {
 
     await finder.fetchWordsFromDB().then((gotWords) => {
       expect(gotWords).toBe(true);
-      expect(finder.maskedWords.length).toBe(mockTestWordList().length);
+      expect(finder.maskedWords.length).toBe(testWordList().length);
     });
   });
 
