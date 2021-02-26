@@ -27,14 +27,15 @@ namespace Backend.Tests.Controllers
         private IHubContext<CombineHub> _notifyService = null!;
         private IPermissionService _permissionService = null!;
 
-        private Project _proj = null!;
+        private string _projName = "LiftControllerTests";
+        private string _projId = null!;
 
         [SetUp]
         public void Setup()
         {
             _permissionService = new PermissionServiceMock();
             _projServ = new ProjectServiceMock();
-            _proj = _projServ.Create(RandomProject()).Result;
+            _projId = _projServ.Create(new Project { Name = _projName }).Result!.Id;
             _wordRepo = new WordRepositoryMock();
             _liftService = new LiftService();
             _notifyService = new HubContextMock();
@@ -46,7 +47,7 @@ namespace Backend.Tests.Controllers
         [TearDown]
         public void TearDown()
         {
-            _projServ.Delete(_proj.Id);
+            _projServ.Delete(_projId);
         }
 
         private static Project RandomProject()
@@ -217,9 +218,9 @@ namespace Backend.Tests.Controllers
         [Test]
         public async Task TestExportDeleted()
         {
-            var word = RandomWord(_proj.Id);
-            var secondWord = RandomWord(_proj.Id);
-            var wordToDelete = RandomWord(_proj.Id);
+            var word = RandomWord(_projId);
+            var secondWord = RandomWord(_projId);
+            var wordToDelete = RandomWord(_projId);
 
             var wordToUpdate = _wordRepo.Create(word).Result;
             wordToDelete = _wordRepo.Create(wordToDelete).Result;
@@ -230,12 +231,12 @@ namespace Backend.Tests.Controllers
             word.Id = "";
             word.Vernacular = "updated";
 
-            await _wordService.Update(_proj.Id, wordToUpdate.Id, word);
-            await _wordService.DeleteFrontierWord(_proj.Id, wordToDelete.Id);
+            await _wordService.Update(_projId, wordToUpdate.Id, word);
+            await _wordService.DeleteFrontierWord(_projId, wordToDelete.Id);
 
             const string userId = "testId";
-            _liftController.ExportLiftFile(_proj.Id, userId).Wait();
-            var result = (FileStreamResult)_liftController.DownloadLiftFile(_proj.Id, userId).Result;
+            _liftController.ExportLiftFile(_projId, userId).Wait();
+            var result = (FileStreamResult)_liftController.DownloadLiftFile(_projId, userId).Result;
             Assert.NotNull(result);
 
             // Read contents.
@@ -247,8 +248,9 @@ namespace Backend.Tests.Controllers
 
             // Write LiftFile contents to a temporary directory.
             var extractedExportDir = ExtractZipFileContents(contents);
-            var exportPath = Path.Combine(extractedExportDir,
-                Path.Combine("Lift", "NewLiftFile.lift"));
+            var sanitizedProjName = Sanitization.MakeFriendlyForPath(_projName, "Lift");
+            var exportPath = Path.Combine(
+                extractedExportDir, sanitizedProjName, sanitizedProjName + ".lift");
             var text = await File.ReadAllTextAsync(exportPath, Encoding.UTF8);
             // TODO: Add SIL or other XML assertion library and verify with xpath that the correct entries are
             //      kept vs deleted
@@ -259,7 +261,7 @@ namespace Backend.Tests.Controllers
 
             // Delete the export
             await _liftController.DeleteLiftFile(userId);
-            var notFoundResult = _liftController.DownloadLiftFile(_proj.Id, userId).Result as NotFoundObjectResult;
+            var notFoundResult = _liftController.DownloadLiftFile(_projId, userId).Result as NotFoundObjectResult;
             Assert.NotNull(notFoundResult);
         }
 
@@ -300,7 +302,7 @@ namespace Backend.Tests.Controllers
                 var fileUpload = InitFile(stream, roundTripObj.Filename);
 
                 // Make api call.
-                var result = _liftController.UploadLiftFile(proj1.Id, fileUpload).Result;
+                var result = _liftController.UploadLiftFile(proj1!.Id, fileUpload).Result;
                 Assert.That(!(result is BadRequestObjectResult));
             }
 
@@ -333,17 +335,17 @@ namespace Backend.Tests.Controllers
 
             // Assert the file was created with desired hierarchy.
             Assert.That(Directory.Exists(exportedDirectory));
-            Assert.That(Directory.Exists(Path.Combine(exportedDirectory, "Lift", "audio")));
+            var sanitizedProjName = Sanitization.MakeFriendlyForPath(proj1.Name, "Lift");
+            var exportedProjDir = Path.Combine(exportedDirectory, sanitizedProjName);
+            Assert.That(Directory.Exists(Path.Combine(exportedProjDir, "audio")));
             foreach (var audioFile in roundTripObj.AudioFiles)
             {
-                Assert.That(File.Exists(Path.Combine(
-                    exportedDirectory, "Lift", "audio", audioFile)));
+                Assert.That(File.Exists(Path.Combine(exportedProjDir, "audio", audioFile)));
             }
-            Assert.That(Directory.Exists(Path.Combine(exportedDirectory, "Lift", "WritingSystems")));
+            Assert.That(Directory.Exists(Path.Combine(exportedProjDir, "WritingSystems")));
             Assert.That(File.Exists(Path.Combine(
-                exportedDirectory,
-                "Lift", "WritingSystems", roundTripObj.Language + ".ldml")));
-            Assert.That(File.Exists(Path.Combine(exportedDirectory, "Lift", "NewLiftFile.lift")));
+                exportedProjDir, "WritingSystems", roundTripObj.Language + ".ldml")));
+            Assert.That(File.Exists(Path.Combine(exportedProjDir, sanitizedProjName + ".lift")));
             Directory.Delete(exportedDirectory, true);
 
             // Clean up.
@@ -361,7 +363,7 @@ namespace Backend.Tests.Controllers
                 var fileUpload = InitFile(fstream, roundTripObj.Filename);
 
                 // Make api call.
-                var result2 = _liftController.UploadLiftFile(proj2.Id, fileUpload).Result;
+                var result2 = _liftController.UploadLiftFile(proj2!.Id, fileUpload).Result;
                 Assert.That(!(result2 is BadRequestObjectResult));
             }
 
@@ -395,18 +397,19 @@ namespace Backend.Tests.Controllers
 
             // Assert the file was created with desired hierarchy.
             Assert.That(Directory.Exists(exportedDirectory));
-            Assert.That(Directory.Exists(Path.Combine(exportedDirectory, "Lift", "audio")));
+            sanitizedProjName = Sanitization.MakeFriendlyForPath(proj2.Name, "Lift");
+            exportedProjDir = Path.Combine(exportedDirectory, sanitizedProjName);
+            Assert.That(Directory.Exists(Path.Combine(exportedProjDir, "audio")));
             foreach (var audioFile in roundTripObj.AudioFiles)
             {
-                var path = Path.Combine(exportedDirectory, "Lift", "audio", audioFile);
+                var path = Path.Combine(exportedProjDir, "audio", audioFile);
                 Assert.That(File.Exists(path),
                     $"The file {audioFile} can not be found at this path: {path}");
             }
-            Assert.That(Directory.Exists(Path.Combine(exportedDirectory, "Lift", "WritingSystems")));
+            Assert.That(Directory.Exists(Path.Combine(exportedProjDir, "WritingSystems")));
             Assert.That(File.Exists(Path.Combine(
-                exportedDirectory,
-                "Lift", "WritingSystems", roundTripObj.Language + ".ldml")));
-            Assert.That(File.Exists(Path.Combine(exportedDirectory, "Lift", "NewLiftFile.lift")));
+                exportedProjDir, "WritingSystems", roundTripObj.Language + ".ldml")));
+            Assert.That(File.Exists(Path.Combine(exportedProjDir, sanitizedProjName + ".lift")));
             Directory.Delete(exportedDirectory, true);
 
             // Clean up.

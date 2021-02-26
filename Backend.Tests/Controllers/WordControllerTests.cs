@@ -28,7 +28,7 @@ namespace Backend.Tests.Controllers
             _projectService = new ProjectServiceMock();
             _projectService = new ProjectServiceMock();
             _wordController = new WordController(_repo, _wordService, _projectService, _permissionService);
-            _projId = _projectService.Create(new Project()).Result.Id;
+            _projId = _projectService.Create(new Project { Name = "WordControllerTests" }).Result!.Id;
         }
 
         private Word RandomWord()
@@ -229,7 +229,6 @@ namespace Backend.Tests.Controllers
             var parentChildMergeObject = new MergeWords
             {
                 Parent = RandomWord(),
-                Time = Util.RandString(),
                 ChildrenWords = new List<MergeSourceWord>()
             };
 

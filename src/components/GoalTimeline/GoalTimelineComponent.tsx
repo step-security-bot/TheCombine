@@ -2,9 +2,9 @@ import { Button, GridList, GridListTile, Typography } from "@material-ui/core";
 import React, { ReactElement } from "react";
 import { Translate } from "react-localize-redux";
 
-import HorizontalDisplay from "components/GoalTimeline/GoalDisplay/HorizontalDisplay";
-import VerticalDisplay from "components/GoalTimeline/GoalDisplay/VerticalDisplay";
-import { Goal } from "types/goals";
+import GoalList from "components/GoalTimeline/GoalList";
+import { Goal, GoalType } from "types/goals";
+import { goalTypeToGoal } from "types/goalUtilities";
 
 const timelineStyle = {
   centerDisplays: {
@@ -38,7 +38,6 @@ interface GoalTimelineProps {
 
 interface GoalTimelineState {
   portrait: boolean;
-  reducedLandScape: boolean;
 }
 
 /**
@@ -54,7 +53,6 @@ export default class GoalTimeline extends React.Component<
     super(props);
     this.state = {
       portrait: window.innerWidth < window.innerHeight,
-      reducedLandScape: (window.innerWidth * 7) / 10 < window.innerHeight,
     };
     this.handleChange = this.handleChange.bind(this);
   }
@@ -66,7 +64,6 @@ export default class GoalTimeline extends React.Component<
   handleWindowSizeChange = () => {
     this.setState({
       portrait: window.innerWidth < window.innerHeight,
-      reducedLandScape: (window.innerWidth * 7) / 10 < window.innerHeight,
     });
   };
 
@@ -78,40 +75,32 @@ export default class GoalTimeline extends React.Component<
 
   // Given a change event, find which goal the user selected, and choose it
   // as the next goal to work on.
-  handleChange(name: string) {
-    const goal = this.props.allPossibleGoals.find((goal) => goal.name === name);
-    if (goal) {
-      this.props.chooseGoal(goal);
-    }
+  handleChange(goalType: GoalType) {
+    // Create a new goal to prevent mutating the suggestions list.
+    this.props.chooseGoal(goalTypeToGoal(goalType));
   }
 
   // Creates a list of suggestions, with non-suggested goals at the end and
   // our main suggestion absent (to be displayed on the suggestions button)
   createSuggestionData(): Goal[] {
-    let data: Goal[] = this.props.suggestions.slice(1);
-    let hasGoal: boolean;
-
-    if (this.props.suggestions.length) {
-      for (let goal of this.props.allPossibleGoals) {
-        hasGoal = false;
-        for (let i = 0; i < data.length && !hasGoal; i++) {
-          if (goal.name === data[i].name) {
-            hasGoal = true;
-          }
-        }
-        if (!hasGoal && goal.name !== this.props.suggestions[0].name) {
-          data.push(goal);
-        }
-      }
-    } else {
+    const suggestions = this.props.suggestions;
+    if (!suggestions.length) {
       return this.props.allPossibleGoals;
     }
-    return data;
+    const secondarySuggestions = suggestions.slice(1);
+    const suggestionTypes = suggestions.map((g) => g.goalType);
+    const nonSuggestions = this.props.allPossibleGoals.filter(
+      (g) => !suggestionTypes.includes(g.goalType)
+    );
+    secondarySuggestions.push(...nonSuggestions);
+    return secondarySuggestions;
   }
 
   // Creates a button for our recommended goal
   goalButton(): ReactElement {
-    let done: boolean = this.props.suggestions.length === 0;
+    const done = this.props.suggestions.length === 0;
+    // Create a new goal to prevent mutating the suggestions list.
+    const goal = goalTypeToGoal(this.props.suggestions[0]?.goalType);
     return (
       <Button
         style={timelineStyle.centerButton as any}
@@ -119,17 +108,11 @@ export default class GoalTimeline extends React.Component<
         variant={"contained"}
         disabled={done}
         onClick={() => {
-          this.props.chooseGoal(this.props.suggestions[0]);
+          this.props.chooseGoal(goal);
         }}
       >
         <Typography variant={"h4"}>
-          <Translate
-            id={
-              done
-                ? "goal.selector.done"
-                : this.props.suggestions[0].name + ".title"
-            }
-          />
+          <Translate id={done ? "goal.selector.done" : goal.name + ".title"} />
         </Typography>
       </Button>
     );
@@ -140,11 +123,11 @@ export default class GoalTimeline extends React.Component<
       <React.Fragment>
         {/* Alternatives */}
         <div style={{ ...timelineStyle.paneStyling, float: "right" } as any}>
-          <HorizontalDisplay
+          <GoalList
+            orientation="horizontal"
             data={this.createSuggestionData()}
-            scrollToEnd={false}
             handleChange={this.handleChange}
-            width={100}
+            size={100}
             numPanes={3}
           />
         </div>
@@ -170,25 +153,25 @@ export default class GoalTimeline extends React.Component<
 
   renderLandscape() {
     return (
-      <GridList cols={this.state.reducedLandScape ? 6 : 8} cellHeight="auto">
+      <GridList cols={13} cellHeight="auto">
         {/* Alternatives */}
-        <GridListTile cols={2}>
+        <GridListTile cols={4}>
           <div style={{ ...timelineStyle.paneStyling, float: "right" } as any}>
             <Typography variant="h6">
               <Translate id={"goal.selector.other"} />
             </Typography>
-            <VerticalDisplay
+            <GoalList
+              orientation="vertical"
               data={this.createSuggestionData()}
-              scrollToEnd={false}
               handleChange={this.handleChange}
-              height={35}
+              size={35}
               numPanes={3}
             />
           </div>
         </GridListTile>
 
         {/* Recommendation */}
-        <GridListTile cols={2} style={timelineStyle.paneStyling as any}>
+        <GridListTile cols={3} style={timelineStyle.paneStyling as any}>
           <Typography variant="h5">
             <Translate id={"goal.selector.present"} />
           </Typography>
@@ -196,17 +179,16 @@ export default class GoalTimeline extends React.Component<
         </GridListTile>
 
         {/* History */}
-
-        <GridListTile cols={2}>
+        <GridListTile cols={4}>
           <div style={timelineStyle.paneStyling as any}>
             <Typography variant="h6">
               <Translate id={"goal.selector.past"} />
             </Typography>
-            <VerticalDisplay
+            <GoalList
+              orientation="vertical"
               data={[...this.props.history].reverse()}
-              scrollToEnd={false}
               handleChange={this.handleChange}
-              height={35}
+              size={35}
               numPanes={3}
             />
           </div>

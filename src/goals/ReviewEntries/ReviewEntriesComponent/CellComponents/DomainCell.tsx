@@ -5,16 +5,16 @@ import { Translate } from "react-localize-redux";
 import { useSelector } from "react-redux";
 
 import TreeView from "components/TreeView";
-import { StoreState } from "types";
-import { highlight } from "types/theme";
-import { SemanticDomain } from "types/word";
+import AlignedList, {
+  SPACER,
+} from "goals/ReviewEntries/ReviewEntriesComponent/CellComponents/AlignedList";
 import {
   ReviewEntriesSense,
   ReviewEntriesWord,
 } from "goals/ReviewEntries/ReviewEntriesComponent/ReviewEntriesTypes";
-import AlignedList, {
-  SPACER,
-} from "goals/ReviewEntries/ReviewEntriesComponent/CellComponents/AlignedList";
+import { StoreState } from "types";
+import { themeColors } from "types/theme";
+import { SemanticDomain } from "types/word";
 
 interface DomainCellProps {
   rowData: ReviewEntriesWord;
@@ -24,9 +24,9 @@ interface DomainCellProps {
 
 export default function DomainCell(props: DomainCellProps) {
   const [addingDomains, setAddingDomains] = useState<boolean>(false);
-  const [senseToChange, setSenseToChange] = useState<ReviewEntriesSense | null>(
-    null
-  );
+  const [senseToChange, setSenseToChange] = useState<
+    ReviewEntriesSense | undefined
+  >();
   const selectedDomain = useSelector(
     (state: StoreState) => state.treeViewState?.currentDomain
   );
@@ -63,7 +63,7 @@ export default function DomainCell(props: DomainCellProps) {
 
   function getChipStyle(senseIndex: number, domainIndex: number) {
     return props.sortingByDomains && senseIndex === 0 && domainIndex === 0
-      ? { backgroundColor: highlight }
+      ? { backgroundColor: themeColors.highlight }
       : {};
   }
 

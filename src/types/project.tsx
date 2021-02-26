@@ -1,7 +1,10 @@
 import { randomIntString } from "utilities";
-import { AutoComplete } from "types/AutoComplete";
 import { SemanticDomain } from "types/word";
 
+export enum AutoComplete {
+  Off = "Off",
+  On = "On",
+}
 export interface CustomField {
   name: string;
   type: string;
@@ -11,30 +14,29 @@ export interface WritingSystem {
   bcp47: string;
   font: string;
 }
+
 export interface Project {
   id: string;
   name: string;
   isActive: boolean;
   liftImported: boolean;
   semanticDomains: SemanticDomain[];
-  userRoles: string;
   vernacularWritingSystem: WritingSystem;
   analysisWritingSystems: WritingSystem[];
   validCharacters: string[];
   rejectedCharacters: string[];
+  autocompleteSetting: AutoComplete;
+  customFields: CustomField[];
   wordFields: string[];
   partsOfSpeech: string[];
-  customFields: CustomField[];
-  autocompleteSetting: AutoComplete;
 }
 
-export const defaultProject = {
+export const defaultProject: Project = {
   id: "",
   name: "",
   isActive: true,
   liftImported: false,
   semanticDomains: [],
-  userRoles: "",
   vernacularWritingSystem: { name: "", bcp47: "", font: "" },
   analysisWritingSystems: [{ name: "", bcp47: "", font: "" }],
   validCharacters: [],
@@ -43,7 +45,7 @@ export const defaultProject = {
   wordFields: [],
   partsOfSpeech: [],
   autocompleteSetting: AutoComplete.On,
-} as Project;
+};
 
 // Randomize properties as needed for tests.
 export function randomProject(): Project {

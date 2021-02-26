@@ -32,6 +32,7 @@ namespace BackendFramework.Controllers
 
         /// <summary> Returns all <see cref="UserEdit"/>s for specified <see cref="Project"/> </summary>
         /// <remarks> GET: v1/projects/{projectId}/useredits </remarks>
+        /// <returns> UserEdit list </returns>
         [HttpGet]
         public async Task<IActionResult> Get(string projectId)
         {
@@ -80,6 +81,7 @@ namespace BackendFramework.Controllers
 
         /// <summary> Returns <see cref="UserEdit"/>s with specified id </summary>
         /// <remarks> GET: v1/projects/{projectId}/useredits/{userEditId} </remarks>
+        /// <returns> UserEdit </returns>
         [HttpGet("{userEditId}")]
         public async Task<IActionResult> Get(string projectId, string userEditId)
         {
@@ -141,9 +143,9 @@ namespace BackendFramework.Controllers
             return new OkObjectResult(output);
         }
 
-        /// <summary> Adds a goal to <see cref="UserEdit"/> with specified id </summary>
+        /// <summary> Adds/updates a goal to/in a specified <see cref="UserEdit"/> </summary>
         /// <remarks> POST: v1/projects/{projectId}/useredits/{userEditId} </remarks>
-        /// <returns> Index of newest edit </returns>
+        /// <returns> Index of added/updated edit </returns>
         [HttpPost("{userEditId}")]
         public async Task<IActionResult> Post(string projectId, string userEditId, [FromBody] Edit newEdit)
         {
@@ -183,12 +185,12 @@ namespace BackendFramework.Controllers
             return new NotFoundObjectResult(editIndex);
         }
 
-        /// <summary> Adds a step to specified goal </summary>
+        /// <summary> Adds/updates a step to/in specified goal </summary>
         /// <remarks> PUT: v1/projects/{projectId}/useredits/{userEditId} </remarks>
-        /// <returns> Index of newest edit </returns>
+        /// <returns> Index of added/modified step in specified goal </returns>
         [HttpPut("{userEditId}")]
         public async Task<IActionResult> Put(string projectId, string userEditId,
-            [FromBody] UserEditObjectWrapper userEdit)
+            [FromBody] UserEditStepWrapper stepEdit)
         {
             if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
             {
@@ -208,22 +210,38 @@ namespace BackendFramework.Controllers
                 return new NotFoundObjectResult(projectId);
             }
 
-            // Ensure userEdit exists
+            // Ensure userEdit exists.
             var document = await _repo.GetUserEdit(projectId, userEditId);
             if (document is null)
             {
                 return new NotFoundResult();
             }
 
-            // Ensure index exists
-            if (userEdit.GoalIndex >= document.Edits.Count)
+            // Ensure indices exist.
+            if (stepEdit.GoalIndex < 0 || stepEdit.GoalIndex >= document.Edits.Count)
             {
-                return new BadRequestObjectResult("Goal index out of range");
+                return new BadRequestObjectResult("Goal index out of range.");
+            }
+            var maxStepIndex = document.Edits[stepEdit.GoalIndex].StepData.Count;
+            var stepIndex = stepEdit.StepIndex ?? maxStepIndex;
+            if (stepIndex < 0 || stepIndex > maxStepIndex)
+            {
+                return new BadRequestObjectResult("Step index out of range.");
             }
 
-            await _userEditService.AddStepToGoal(projectId, userEditId, userEdit.GoalIndex, userEdit.NewEdit);
+            // Add new step to or update step in goal.
+            if (stepIndex == maxStepIndex)
+            {
+                await _userEditService.AddStepToGoal(
+                    projectId, userEditId, stepEdit.GoalIndex, stepEdit.StepString);
+            }
+            else
+            {
+                await _userEditService.UpdateStepInGoal(
+                    projectId, userEditId, stepEdit.GoalIndex, stepEdit.StepString, stepIndex);
+            }
 
-            return new OkObjectResult(document.Edits[userEdit.GoalIndex].StepData.Count - 1);
+            return new OkObjectResult(stepIndex);
         }
 
         /// <summary> Deletes <see cref="UserEdit"/> with specified id </summary>
