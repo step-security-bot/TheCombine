@@ -1,3 +1,12 @@
+"""
+SelfSignedCert certificate module.
+
+The SelfSignedCert creates a Self-Signed certificate that can be used:
+  1. as a temporary certificate so that NGINX will stay up while Let's Encrypt
+     performs an HTTP challenge; or
+  2. for servers for testing that are not reachable by Let's Encrypt.
+"""
+
 import os
 from pathlib import Path
 
@@ -30,7 +39,7 @@ class SelfSignedCert(BaseCert):
         certificate to the directory where the certs are created.
         """
         if not self.cert.exists():
-            self.cert_dir.mkdir(0o755, True)
+            self.cert_dir.mkdir(0o755, parents=True)
             os.system(
                 f"openssl req "
                 "-x509 "

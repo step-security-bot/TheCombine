@@ -70,9 +70,13 @@ export class Word {
   }
 }
 
-export interface MergeWord {
-  wordID: string;
-  senses: State[];
+export interface MergeSourceWord {
+  srcWordId: string;
+  getAudio: boolean;
+}
+export interface MergeWords {
+  parent: Word;
+  children: MergeSourceWord[];
 }
 
 //used in ExistingDataTable
@@ -99,7 +103,7 @@ export function simpleWord(vern: string, gloss: string): Word {
   };
 }
 
-export function multiGlossWord(vern: string, glosses: string[]): Word {
+export function multiSenseWord(vern: string, glosses: string[]): Word {
   return {
     ...new Word(),
     id: randomIntString(),
@@ -109,7 +113,7 @@ export function multiGlossWord(vern: string, glosses: string[]): Word {
 }
 
 // Used for unit testing, as the expected result, when the guids don't matter.
-export function multiGlossWordAnyGuid(vern: string, glosses: string[]): Word {
+export function multiSenseWordAnyGuid(vern: string, glosses: string[]): Word {
   return {
     ...new Word(),
     id: randomIntString(),
@@ -134,8 +138,8 @@ export function testWordList(): Word[] {
     simpleWord("Yeet", "Please"),
     simpleWord("Yeet", "Mandatory"),
     simpleWord("Yang", "Die"),
-    multiGlossWord("Yuino", ["Love", "Boba Fett", "Life"]),
-    multiGlossWord("Yuilo", ["Sadness", "Tree bark"]),
+    multiSenseWord("Yuino", ["Love", "Boba Fett", "Life"]),
+    multiSenseWord("Yuilo", ["Sadness", "Tree bark"]),
     simpleWord("Yes", "Wumbo"),
     simpleWord("Yes", "Mayonnaise"),
   ];

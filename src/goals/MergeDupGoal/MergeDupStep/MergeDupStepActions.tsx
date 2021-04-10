@@ -1,25 +1,38 @@
 import * as backend from "backend";
 import * as LocalStorage from "backend/localStorage";
-import DupFinder from "goals/MergeDupGoal/DuplicateFinder/DuplicateFinder";
-import { MergeDups, MergeStepData } from "goals/MergeDupGoal/MergeDups";
+import { updateGoal } from "components/GoalTimeline/GoalsActions";
+import DupFinder, {
+  DefaultParams,
+} from "goals/MergeDupGoal/DuplicateFinder/DuplicateFinder";
 import {
+  CompletedMerge,
+  MergeDups,
+  MergesCompleted,
+  MergeStepData,
+} from "goals/MergeDupGoal/MergeDups";
+import { MergeTreeState } from "goals/MergeDupGoal/MergeDupStep/MergeDupStepReducer";
+import {
+  defaultSidebar,
   Hash,
   MergeTreeReference,
-  TreeDataSense,
+  MergeTreeSense,
+  Sidebar,
 } from "goals/MergeDupGoal/MergeDupStep/MergeDupsTree";
 import { StoreState } from "types";
 import { StoreStateDispatch } from "types/actions";
+import { GoalStatus, GoalType } from "types/goals";
 import { maxNumSteps } from "types/goalUtilities";
-import { State, Word } from "types/word";
+import { MergeSourceWord, MergeWords, State, Word } from "types/word";
 
 export enum MergeTreeActions {
   CLEAR_TREE = "CLEAR_TREE",
+  COMBINE_SENSE = "COMBINE_SENSE",
+  MOVE_DUPLICATE = "MOVE_DUPLICATE",
   MOVE_SENSE = "MOVE_SENSE",
   ORDER_DUPLICATE = "ORDER_DUPLICATE",
   ORDER_SENSE = "ORDER_SENSE",
   SET_DATA = "SET_DATA",
-  SET_PLURAL = "SET_PLURAL",
-  SET_SENSE = "SET_SENSE",
+  SET_SIDEBAR = "SET_SIDEBAR",
   SET_VERNACULAR = "SET_VERNACULAR",
 }
 
@@ -27,9 +40,24 @@ interface ClearTreeMergeAction {
   type: MergeTreeActions.CLEAR_TREE;
 }
 
+interface CombineSenseMergeAction {
+  type: MergeTreeActions.COMBINE_SENSE;
+  payload: { src: MergeTreeReference; dest: MergeTreeReference };
+}
+
+interface MoveDuplicateMergeAction {
+  type: MergeTreeActions.MOVE_DUPLICATE;
+  payload: { ref: MergeTreeReference; destWordId: string; destOrder: number };
+}
+
 interface MoveSenseMergeAction {
   type: MergeTreeActions.MOVE_SENSE;
-  payload: { src: MergeTreeReference[]; dest: MergeTreeReference[] };
+  payload: {
+    wordId: string;
+    mergeSenseId: string;
+    destWordId: string;
+    destOrder: number;
+  };
 }
 
 interface OrderDuplicateMergeAction {
@@ -39,11 +67,7 @@ interface OrderDuplicateMergeAction {
 
 interface OrderSenseMergeAction {
   type: MergeTreeActions.ORDER_SENSE;
-  payload: {
-    wordID: string;
-    senseID: string;
-    order: number;
-  };
+  payload: MergeTreeReference;
 }
 
 interface SetDataMergeAction {
@@ -51,70 +75,83 @@ interface SetDataMergeAction {
   payload: Word[];
 }
 
-interface SetSenseMergeAction {
-  type: MergeTreeActions.SET_SENSE;
-  payload: { ref: MergeTreeReference; data: number | undefined };
+interface SetSidebarMergeAction {
+  type: MergeTreeActions.SET_SIDEBAR;
+  payload: Sidebar;
 }
 
-interface SetWordStringMergeAction {
-  type: MergeTreeActions.SET_PLURAL | MergeTreeActions.SET_VERNACULAR;
-  payload: { wordID: string; data: string };
+interface SetVernacularMergeAction {
+  type: MergeTreeActions.SET_VERNACULAR;
+  payload: { wordId: string; vern: string };
 }
 
 export type MergeTreeAction =
   | ClearTreeMergeAction
+  | CombineSenseMergeAction
+  | MoveDuplicateMergeAction
   | MoveSenseMergeAction
   | OrderDuplicateMergeAction
   | OrderSenseMergeAction
   | SetDataMergeAction
-  | SetSenseMergeAction
-  | SetWordStringMergeAction;
+  | SetSidebarMergeAction
+  | SetVernacularMergeAction;
 
 // Action Creators
-
-export function setVern(
-  wordID: string,
-  vern: string
-): SetWordStringMergeAction {
-  return {
-    type: MergeTreeActions.SET_VERNACULAR,
-    payload: { wordID, data: vern },
-  };
-}
 
 export function clearTree(): ClearTreeMergeAction {
   return { type: MergeTreeActions.CLEAR_TREE };
 }
 
-export function moveSenses(
-  src: MergeTreeReference[],
-  dest: MergeTreeReference[]
-): MoveSenseMergeAction {
+export function combineSense(
+  src: MergeTreeReference,
+  dest: MergeTreeReference
+): CombineSenseMergeAction {
   return {
-    type: MergeTreeActions.MOVE_SENSE,
+    type: MergeTreeActions.COMBINE_SENSE,
     payload: { src, dest },
   };
 }
 
 export function moveSense(
-  src: MergeTreeReference,
-  dest: MergeTreeReference
-): MoveSenseMergeAction {
-  return moveSenses([src], [dest]);
-}
-
-export function setSense(
   ref: MergeTreeReference,
-  data: number | undefined
-): SetSenseMergeAction {
+  destWordId: string,
+  destOrder: number
+): MoveDuplicateMergeAction | MoveSenseMergeAction {
+  if (ref.order === undefined) {
+    return {
+      type: MergeTreeActions.MOVE_SENSE,
+      payload: { ...ref, destWordId, destOrder },
+    };
+  }
+  // If ref.order is defined, the sense is being moved out of the sidebar.
   return {
-    type: MergeTreeActions.SET_SENSE,
-    payload: { ref, data },
+    type: MergeTreeActions.MOVE_DUPLICATE,
+    payload: { ref, destWordId, destOrder },
   };
 }
 
-export function removeSense(ref: MergeTreeReference): SetSenseMergeAction {
-  return setSense(ref, undefined);
+export function orderSense(
+  ref: MergeTreeReference,
+  order: number
+): OrderDuplicateMergeAction | OrderSenseMergeAction {
+  if (ref.order === undefined) {
+    return {
+      type: MergeTreeActions.ORDER_SENSE,
+      payload: { ...ref, order },
+    };
+  }
+  // If ref.order is defined, the sense is being ordered within the sidebar.
+  return {
+    type: MergeTreeActions.ORDER_DUPLICATE,
+    payload: { ref, order },
+  };
+}
+
+export function setSidebar(sidebar?: Sidebar): SetSidebarMergeAction {
+  return {
+    type: MergeTreeActions.SET_SIDEBAR,
+    payload: sidebar ?? defaultSidebar,
+  };
 }
 
 export function setWordData(words: Word[]): SetDataMergeAction {
@@ -124,75 +161,52 @@ export function setWordData(words: Word[]): SetDataMergeAction {
   };
 }
 
-export function orderSense(
-  wordID: string,
-  senseID: string,
-  order: number
-): OrderSenseMergeAction {
+export function setVern(
+  wordId: string,
+  vern: string
+): SetVernacularMergeAction {
   return {
-    type: MergeTreeActions.ORDER_SENSE,
-    payload: { wordID, senseID, order },
-  };
-}
-
-export function orderDuplicate(
-  ref: MergeTreeReference,
-  order: number
-): OrderDuplicateMergeAction {
-  return {
-    type: MergeTreeActions.ORDER_DUPLICATE,
-    payload: { ref, order },
+    type: MergeTreeActions.SET_VERNACULAR,
+    payload: { wordId, vern },
   };
 }
 
 // Dispatch Functions
 
-export function mergeSense() {
-  return async (_dispatch: StoreStateDispatch, _getState: () => StoreState) => {
-    // TODO: Merge all duplicates into sense and remove them from tree leaving new word on top
-  };
+interface SenseWithState extends MergeTreeSense {
+  state: State;
 }
 
-type SenseWithState = TreeDataSense & { state: State };
-
-export async function mergeWord(
-  wordID: string,
-  getState: () => StoreState,
-  mapping: Hash<{ srcWord: string; order: number }>
-): Promise<Hash<{ srcWord: string; order: number }>> {
-  // find and build MergeWord[]
-  const word = getState().mergeDuplicateGoal.tree.words[wordID];
+// Given a wordId, constructs from the state the corresponing MergeWords.
+// Returns the MergeWords, or undefined if the parent and child are identical.
+function getMergeWords(
+  wordId: string,
+  mergeTree: MergeTreeState
+): MergeWords | undefined {
+  // Find and build MergeSourceWord[].
+  const word = mergeTree.tree.words[wordId];
   if (word) {
-    const data = getState().mergeDuplicateGoal.data;
+    const data = mergeTree.data;
 
-    // create a list of all senses and add merge type tags slit by src word
-    let senses: Hash<SenseWithState[]> = {};
+    // Create list of all senses and add merge type tags slit by src word.
+    const senses: Hash<SenseWithState[]> = {};
 
-    let allSenses = Object.values(word.senses).map((sense) =>
-      Object.values(sense)
-    );
+    // Build senses array.
+    for (const senseGuids of Object.values(word.sensesGuids)) {
+      for (const guid of senseGuids) {
+        const senseData = data.senses[guid];
+        const wordId = senseData.srcWordId;
 
-    // build senses array
-    for (let senseList of allSenses) {
-      for (let sense of senseList) {
-        let senseData = data.senses[sense];
-        let wordID = senseData.srcWord;
+        if (!senses[wordId]) {
+          const dbWord = data.words[wordId];
 
-        let map = mapping[`${wordID}:${senseData.order}`];
-        if (map) {
-          wordID = map.srcWord;
-        }
-
-        if (!senses[wordID]) {
-          let dbWord = await backend.getWord(wordID);
-
-          // add each sense into senses as separate
-          senses[wordID] = [];
-          for (let sense of dbWord.senses) {
-            senses[wordID].push({
+          // Add each sense into senses as separate.
+          senses[wordId] = [];
+          for (const sense of dbWord.senses) {
+            senses[wordId].push({
               ...sense,
-              srcWord: wordID,
-              order: senses[wordID].length,
+              srcWordId: wordId,
+              order: senses[wordId].length,
               state: State.Separate,
             });
           }
@@ -200,55 +214,53 @@ export async function mergeWord(
       }
     }
 
-    // Set sense and duplicate senses
-    Object.values(word.senses).forEach((sense) => {
-      let senseIDs = Object.values(sense);
-      let senseData = data.senses[senseIDs[0]];
-      let wordID = senseData.srcWord;
-      let senseIndex = senseData.order;
+    // Set sense and duplicate senses.
+    Object.values(word.sensesGuids).forEach((guids) => {
+      // Set the first sense to be merged as State.Sense.
+      const senseData = data.senses[guids[0]];
+      const mainSense = senses[senseData.srcWordId][senseData.order];
+      mainSense.state = State.Sense;
 
-      let map = mapping[`${wordID}:${senseData.order}`];
-      if (map) {
-        wordID = map.srcWord;
-        senseIndex = map.order;
-      }
-      // set this sense to be merged as sense
-      senses[wordID][senseIndex].state = State.Sense;
-
-      // we want a list of all senses skipping the first
-      let dups = senseIDs
-        .slice(1)
-        .map((id) => ({ ...data.senses[id], state: State.Duplicate }));
-
-      // set each dup to be merged as duplicates
+      // Merge the rest as duplicates.
+      const dups = guids.slice(1).map((guid) => data.senses[guid]);
       dups.forEach((dup) => {
-        senses[dup.srcWord][dup.order].state = State.Duplicate;
-        // put this sense's semdoms in the parent senses's
-        for (let semdom of senses[dup.srcWord][dup.order].semanticDomains) {
-          if (
-            !senses[wordID][senseIndex].semanticDomains
-              .map((a) => a.id)
-              .includes(semdom.id)
-          ) {
-            senses[wordID][senseIndex].semanticDomains.push(semdom);
+        const dupSense = senses[dup.srcWordId][dup.order];
+        dupSense.state = State.Duplicate;
+        // Put this sense's domains in the main sense's.
+        for (const dom of dupSense.semanticDomains) {
+          if (!mainSense.semanticDomains.find((d) => d.id === dom.id)) {
+            mainSense.semanticDomains.push(dom);
           }
         }
       });
     });
 
-    // clean order of senses in each src word to reflect
-    // the order in the backend
+    // Clean order of senses in each src word to reflect backend order.
     Object.values(senses).forEach((wordSenses) => {
       wordSenses = wordSenses.sort((a, b) => a.order - b.order);
-      senses[wordSenses[0].srcWord] = wordSenses;
+      senses[wordSenses[0].srcWordId] = wordSenses;
     });
 
-    // construct parent word
-    let parent: Word = { ...data.words[wordID], senses: [] };
+    // Don't return empty merges: when the only child is the parent word
+    // and has the same number of senses as parent (all with State.Sense).
+    if (Object.values(senses).length === 1) {
+      const onlyChild = Object.values(senses)[0];
+      if (
+        onlyChild[0].srcWordId === wordId &&
+        onlyChild.length === data.words[wordId].senses.length &&
+        !onlyChild.find((s) => s.state !== State.Sense)
+      ) {
+        return undefined;
+      }
+    }
 
-    // construct sense children
-    let children = Object.values(senses).map((word) => {
-      word.forEach((sense) => {
+    // Construct parent and children.
+    const parent: Word = { ...data.words[wordId], senses: [] };
+    if (!parent.vernacular) {
+      parent.vernacular = word.vern;
+    }
+    const children: MergeSourceWord[] = Object.values(senses).map((sList) => {
+      sList.forEach((sense) => {
         if (sense.state === State.Sense || sense.state === State.Active) {
           parent.senses.push({
             guid: sense.guid,
@@ -258,99 +270,83 @@ export async function mergeWord(
         }
       });
       return {
-        wordID: word[0].srcWord,
-        senses: word.map((sense) => sense.state),
+        srcWordId: sList[0].srcWordId,
+        getAudio: !sList.find((sense) => sense.state === State.Separate),
       };
     });
 
-    // a merge is an identity if the only child is the parent word
-    // and it has the same number of senses as parent (all with State.Sense)
-    if (
-      children.length === 1 &&
-      children[0].wordID === wordID &&
-      children[0].senses.length === data.words[wordID].senses.length &&
-      !children[0].senses.find((s) => s !== State.Sense)
-    ) {
-      // if the merge is an identity don't bother sending a merge
-      return mapping;
-    }
-
-    // send database call
-    let newWords = await backend.mergeWords(parent, children);
-    let separateIndex = 0;
-    let keepCounts: number[] = [];
-    for (let i in newWords) {
-      keepCounts[i] = 0;
-    }
-
-    for (let wordIndex in children) {
-      // get original wordID
-      let origWord = children[wordIndex];
-
-      // if merge contains separate increment index
-      if (origWord.senses.includes(State.Separate)) {
-        separateIndex++;
-      }
-
-      for (let senseIndex in origWord.senses) {
-        let src = `${origWord.wordID}:${senseIndex}`;
-        switch (origWord.senses[senseIndex]) {
-          case State.Sense:
-            mapping[src] = { srcWord: newWords[0], order: keepCounts[0] };
-            keepCounts[0]++;
-            break;
-          case State.Separate:
-            mapping[src] = {
-              srcWord: newWords[separateIndex],
-              order: keepCounts[separateIndex],
-            };
-            keepCounts[separateIndex]++;
-            break;
-          case State.Duplicate:
-            mapping[src] = { srcWord: newWords[0], order: -1 };
-            break;
-          default:
-            break;
-        }
-      }
-    }
+    return { parent, children };
   }
-  return mapping;
 }
 
 export function mergeAll() {
-  return async (_dispatch: StoreStateDispatch, getState: () => StoreState) => {
+  return async (dispatch: StoreStateDispatch, getState: () => StoreState) => {
     // Generate blacklist.
-    const wordIDs = Object.keys(getState().mergeDuplicateGoal.data.words);
+    const mergeTree = getState().mergeDuplicateGoal;
+    const wordIds = Object.keys(mergeTree.data.words);
     const blacklist = LocalStorage.getMergeDupsBlacklist();
-    blacklistSetAndAllSubsets(blacklist, wordIDs);
+    blacklistSetAndAllSubsets(blacklist, wordIds);
     LocalStorage.setMergeDupsBlacklist(blacklist);
 
     // Merge words.
-    let mapping: Hash<{ srcWord: string; order: number }> = {};
-    const words = Object.keys(getState().mergeDuplicateGoal.tree.words);
-    for (const wordID of words) {
-      mapping = await mergeWord(wordID, getState, mapping);
+    const words = Object.keys(mergeTree.tree.words);
+    const mergeWordsArray: MergeWords[] = [];
+    words.forEach((id) => {
+      const wordsToMerge = getMergeWords(id, mergeTree);
+      if (wordsToMerge) {
+        mergeWordsArray.push(wordsToMerge);
+      }
+    });
+    if (mergeWordsArray.length) {
+      const parentIds = await backend.mergeWords(mergeWordsArray);
+      const childrenIds = [
+        ...new Set(
+          mergeWordsArray.flatMap((m) => m.children).map((s) => s.srcWordId)
+        ),
+      ];
+      const completedMerge = { childrenIds, parentIds };
+      const goal = getState().goalsState.currentGoal;
+      if (goal) {
+        dispatch(addCompletedMergeToGoal(goal, completedMerge));
+      }
+    }
+  };
+}
+
+function addCompletedMergeToGoal(
+  goal: MergeDups,
+  completedMerge: CompletedMerge
+) {
+  return (dispatch: StoreStateDispatch) => {
+    if (goal.goalType === GoalType.MergeDups) {
+      const changes = goal.changes as MergesCompleted;
+      if (!changes.merges) {
+        changes.merges = [];
+      }
+      changes.merges.push(completedMerge);
+      goal.changes = changes;
+      goal.status = GoalStatus.Completed;
+      dispatch(updateGoal(goal));
     }
   };
 }
 
 // Blacklist Functions
 
-function generateBlacklistHash(wordIDs: string[]) {
-  return wordIDs.sort().reduce((val, acc) => `${acc}:${val}`, "");
+function generateBlacklistHash(wordIds: string[]) {
+  return wordIds.sort().reduce((val, acc) => `${acc}:${val}`, "");
 }
 
 // Recursively blacklist all subsets of length at least 2.
 function blacklistSetAndAllSubsets(
   blacklist: Hash<boolean>,
-  wordIDs: string[]
+  wordIds: string[]
 ) {
-  let hash = generateBlacklistHash(wordIDs);
+  let hash = generateBlacklistHash(wordIds);
   blacklist[hash] = true;
-  if (wordIDs.length > 2) {
-    wordIDs.forEach((id) => {
-      const subset = wordIDs.filter((i) => i !== id);
+  if (wordIds.length > 2) {
+    wordIds.forEach((id) => {
+      const subset = wordIds.filter((i) => i !== id);
       hash = generateBlacklistHash(subset);
       if (!blacklist[hash]) {
         blacklistSetAndAllSubsets(blacklist, subset);
@@ -371,12 +367,36 @@ export function dispatchMergeStepData(goal: MergeDups) {
   };
 }
 
+// Modifies the mutable input.
 export async function loadMergeDupsData(goal: MergeDups) {
-  const finder = new DupFinder();
+  // Until we develop a better backend algorithm, run the frontend one twice,
+  // the first time with greater similarity restriction.
+  let newGroups = await getDupGroups(maxNumSteps(goal.goalType), 0);
+  if (!newGroups.length) {
+    newGroups = await getDupGroups(maxNumSteps(goal.goalType));
+  }
+
+  // Add data to goal.
+  goal.data = { plannedWords: newGroups };
+  goal.numSteps = newGroups.length;
+
+  // Reset goal steps.
+  goal.currentStep = 0;
+  goal.steps = [];
+}
+
+async function getDupGroups(
+  maxCount: number,
+  maxScore?: number
+): Promise<Word[][]> {
+  const finder =
+    maxScore === undefined
+      ? new DupFinder()
+      : new DupFinder({ ...DefaultParams, maxScore });
   const groups = await finder.getNextDups();
 
   const usedIDs: string[] = [];
-  const newGroups = [];
+  const newGroups: Word[][] = [];
   const blacklist = LocalStorage.getMergeDupsBlacklist();
 
   for (const group of groups) {
@@ -394,19 +414,11 @@ export async function loadMergeDupsData(goal: MergeDups) {
       usedIDs.push(...groupIds);
     }
 
-    // Stop the process once maxNumSteps many groups found.
-    if (newGroups.length === maxNumSteps(goal.goalType)) {
+    // Stop the process once maxCount many groups found.
+    if (newGroups.length === maxCount) {
       break;
     }
   }
 
-  // Add data to goal.
-  goal.data = { plannedWords: newGroups };
-  goal.numSteps = newGroups.length;
-
-  // Reset goal steps.
-  goal.currentStep = 0;
-  goal.steps = [];
-
-  return goal;
+  return newGroups;
 }

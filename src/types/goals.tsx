@@ -5,12 +5,16 @@ import {
   CreateCharInvData,
   CreateCharInvStepData,
 } from "goals/CreateCharInv/CreateCharInv";
-import { MergeDupData, MergeStepData } from "goals/MergeDupGoal/MergeDups";
+import {
+  MergeDupData,
+  MergesCompleted,
+  MergeStepData,
+} from "goals/MergeDupGoal/MergeDups";
 import { User } from "types/user";
 
 export type GoalData = CreateCharInvData | MergeDupData | {};
 export type GoalStep = CreateCharInvStepData | MergeStepData | {};
-export type GoalChanges = CreateCharInvChanges | {};
+export type GoalChanges = CreateCharInvChanges | MergesCompleted | {};
 
 export interface GoalProps {
   goal?: Goal;
@@ -18,17 +22,10 @@ export interface GoalProps {
 
 // The representation of goals in the redux store
 export interface GoalsState {
-  historyState: GoalHistoryState;
-  allPossibleGoals: Goal[];
-  suggestionsState: GoalSuggestionsState;
-}
-
-export interface GoalHistoryState {
+  allGoalTypes: GoalType[];
+  currentGoal: Goal;
+  goalTypeSuggestions: GoalType[];
   history: Goal[];
-}
-
-export interface GoalSuggestionsState {
-  suggestions: Goal[];
 }
 
 // The enum value is a permanent id for UserEdits and should not be changed.
@@ -57,6 +54,12 @@ export enum GoalName {
   ValidateStrWords = "validateStrWords",
 }
 
+export enum GoalStatus {
+  Loading = "LOADING",
+  InProgress = "IN_PROGRESS",
+  Completed = "COMPLETED",
+}
+
 export class Goal {
   guid: string;
   goalType: GoalType;
@@ -66,7 +69,7 @@ export class Goal {
   numSteps: number;
   currentStep: number;
   data: GoalData;
-  completed: boolean;
+  status: GoalStatus;
   changes: GoalChanges;
 
   constructor(
@@ -83,7 +86,7 @@ export class Goal {
     this.numSteps = 1;
     this.currentStep = 0;
     this.data = data;
-    this.completed = false;
+    this.status = GoalStatus.Loading;
     this.changes = {};
   }
 }

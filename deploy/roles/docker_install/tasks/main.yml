@@ -70,8 +70,8 @@
   notify: restart rsyslog
 
 - name: Configure Default Docker Logging
-  copy:
-    src: daemon.json
+  template:
+    src: daemon.json.j2
     dest: /etc/docker/daemon.json
     owner: root
     group: root
@@ -86,7 +86,6 @@
     group: root
     mode: 0644
   when: combine_use_syslog
-  notify: restart logrotate
 
 - name: check for docker-compose version
   command: docker-compose --version

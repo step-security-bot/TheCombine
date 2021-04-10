@@ -1,4 +1,22 @@
 {
+  "generic": {
+    "404Title": [
+      "404: Page not found",
+      "404: Page not found",
+      "404: Page not found"
+    ],
+    "404Text": [
+      "Click on the combine to go back home.",
+      "Click on the combine to go back home.",
+      "Click on the combine to go back home."
+    ],
+    "loadingTitle": ["Loading...", "Loading...", "Loading..."],
+    "loadingText": [
+      "Please wait while The Combine processes your data.",
+      "Please wait while The Combine processes your data.",
+      "Please wait while The Combine processes your data."
+    ]
+  },
   "addWords": {
     "selectEntry": [
       "Select an entry",
@@ -606,6 +624,13 @@
       ],
       "yes": ["yes", "si", "oui"],
       "no": ["no", "no", "non"]
+    },
+    "changes": {
+      "noChanges": [
+        "No changes made in this goal.",
+        "No changes made in this goal.",
+        "No changes made in this goal."
+      ]
     }
   },
   "mergeDups": {
@@ -646,13 +671,6 @@
         "Faites glisser ce mot vers la droite pour commencer à le fusionner avec d'autres mots"
       ]
     }
-  },
-  "emptyGoal": {
-    "message": [
-      "This goal has not been implemented yet",
-      "Este objetivo aún no se ha implementado",
-      "Cet objectif n'a pas encore été mis en œuvre"
-    ]
   },
   "buttons": {
     "accept": ["Accept", "Aceptar", "Accepter"],

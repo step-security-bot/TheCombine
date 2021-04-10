@@ -7,35 +7,25 @@ import {
   Typography,
 } from "@material-ui/core";
 import { ArrowForwardIos } from "@material-ui/icons";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Draggable } from "react-beautiful-dnd";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
-import { SideBar } from "goals/MergeDupGoal/MergeDupStep/MergeDupStepComponent";
-import {
-  Hash,
-  TreeDataSense,
-} from "goals/MergeDupGoal/MergeDupStep/MergeDupsTree";
+import { setSidebar } from "goals/MergeDupGoal/MergeDupStep/MergeDupStepActions";
+import { MergeTreeSense } from "goals/MergeDupGoal/MergeDupStep/MergeDupsTree";
 import { StoreState } from "types";
+import theme from "types/theme";
+import { Gloss } from "types/word";
 
-interface MergeStackProps {
-  wordID: string;
-  senseID: string;
-  sense: Hash<string>;
+interface DragSenseProps {
   index: number;
-  setSidebar: (el: SideBar) => void;
-  sideBar: SideBar;
+  wordId: string;
+  mergeSenseId: string;
+  senses: MergeTreeSense[];
 }
 
-interface MergeSenseEntry {
-  id: string;
-  data: TreeDataSense;
-}
-
-interface MergeGloss {
-  def: string;
-  language: string;
-  sense: string;
+interface MergeGloss extends Gloss {
+  senseGuid: string;
 }
 
 function arraysEqual<T>(arr1: T[], arr2: T[]) {
@@ -46,86 +36,81 @@ function arraysEqual<T>(arr1: T[], arr2: T[]) {
   return true;
 }
 
-export default function MergeStack(props: MergeStackProps) {
+export default function DragSense(props: DragSenseProps) {
   const [duplicateCount, setDuplicateCount] = useState<number>(1);
-  const [senseEntries, setSenseEntries] = useState<MergeSenseEntry[]>([]);
-  const hashedSenses = useSelector(
-    (state: StoreState) => state.mergeDuplicateGoal.data.senses
-  );
   const analysisLangs = useSelector((state: StoreState) =>
     state.currentProject.analysisWritingSystems.map((ws) => ws.bcp47)
   );
+  const dispatch = useDispatch();
+  const sidebar = useSelector(
+    (state: StoreState) => state.mergeDuplicateGoal.tree.sidebar
+  );
+  const isInSidebar =
+    sidebar.wordId === props.wordId &&
+    sidebar.mergeSenseId === props.mergeSenseId &&
+    sidebar.senses.length > 1;
 
   const updateSidebar = useCallback(() => {
-    props.setSidebar({
-      senses: senseEntries,
-      wordID: props.wordID,
-      senseID: props.senseID,
-    });
-  }, [props, senseEntries]);
+    dispatch(
+      setSidebar({
+        senses: props.senses,
+        wordId: props.wordId,
+        mergeSenseId: props.mergeSenseId,
+      })
+    );
+  }, [dispatch, props]);
+
+  const toggleSidebar = () => {
+    if (isInSidebar) {
+      dispatch(setSidebar());
+    } else {
+      updateSidebar();
+    }
+  };
 
   useEffect(() => {
-    if (senseEntries.length !== duplicateCount) {
-      if (senseEntries.length > duplicateCount) {
+    if (props.senses.length !== duplicateCount) {
+      if (props.senses.length > duplicateCount) {
         updateSidebar();
       }
-      setDuplicateCount(senseEntries.length);
+      setDuplicateCount(props.senses.length);
     }
-  }, [senseEntries.length, duplicateCount, updateSidebar]);
-
-  useEffect(() => {
-    setSenseEntries(
-      Object.entries(props.sense).map((s) => ({
-        id: s[0],
-        data: hashedSenses[s[1]],
-      }))
-    );
-  }, [hashedSenses, props.sense]);
+  }, [props.senses.length, duplicateCount, updateSidebar]);
 
   if (
-    props.sideBar.wordID === props.wordID &&
-    props.sideBar.senseID === props.senseID &&
+    isInSidebar &&
     !arraysEqual(
-      props.sideBar.senses.map((a) => a.id),
-      senseEntries.map((a) => a.id)
+      sidebar.senses.map((s) => s.guid),
+      props.senses.map((s) => s.guid)
     )
   ) {
     updateSidebar();
   }
 
   let glosses: MergeGloss[] = [];
-  for (const entry of senseEntries) {
-    for (const gloss of entry.data.glosses) {
-      glosses.push({
-        def: gloss.def,
-        language: gloss.language,
-        sense: entry.id,
-      });
+  for (const entry of props.senses) {
+    for (const gloss of entry.glosses) {
+      glosses.push({ ...gloss, senseGuid: entry.guid });
     }
   }
   glosses = glosses.filter(
     (v, i, a) => a.findIndex((o) => o.def === v.def) === i
   );
 
-  const senses = Object.values(props.sense).map(
-    (senseID) => hashedSenses[senseID]
-  );
   const semDoms = [
     ...new Set(
-      senses.flatMap((sense) =>
+      props.senses.flatMap((sense) =>
         sense.semanticDomains.map((dom) => `${dom.id}: ${dom.name}`)
       )
     ),
   ];
 
-  const showMoreButton = Object.keys(props.sense).length > 1;
-
   return (
     <Draggable
-      key={props.senseID}
+      key={props.mergeSenseId}
       draggableId={JSON.stringify({
-        word: props.wordID,
-        sense: props.senseID,
+        wordId: props.wordId,
+        mergeSenseId: props.mergeSenseId,
       })}
       index={props.index}
     >
@@ -136,14 +121,19 @@ export default function MergeStack(props: MergeStackProps) {
           {...provided.dragHandleProps}
           style={{
             ...provided.draggableProps.style,
-            margin: 8,
+            margin: theme.spacing(1),
             userSelect: "none",
             minWidth: 150,
             maxWidth: 300,
-            background: snapshot.isDragging ? "lightgreen" : "white",
+            background: snapshot.isDragging
+              ? "lightgreen"
+              : isInSidebar
+              ? "lightblue"
+              : "white",
           }}
         >
           <CardContent style={{ position: "relative", paddingRight: 40 }}>
+            {/* Button for showing the sidebar. */}
             <div
               style={{
                 position: "absolute",
@@ -152,13 +142,15 @@ export default function MergeStack(props: MergeStackProps) {
                 transform: "translateY(-50%)",
               }}
             >
-              {showMoreButton && (
-                <IconButton onClick={updateSidebar}>
+              {props.senses.length > 1 && (
+                <IconButton onClick={toggleSidebar}>
                   <ArrowForwardIos />
                 </IconButton>
               )}
             </div>
+            {/* Display of sense details. */}
             <div>
+              {/* List glosses */}
               {analysisLangs.map((lang) => (
                 <div key={lang}>
                   <Typography variant="caption">{`${lang}: `}</Typography>

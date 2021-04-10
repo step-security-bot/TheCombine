@@ -555,11 +555,6 @@ namespace BackendFramework.Services
                     Created = Time.ToUtcIso8601(entry.DateCreated),
                     Modified = Time.ToUtcIso8601(entry.DateModified)
                 };
-                var proj = _projectService.GetProject(_projectId).Result;
-                if (proj is null)
-                {
-                    throw new MissingProjectException($"Project does not exist: {_projectId}");
-                }
 
                 // Add Note if one exists.
                 // Note: Currently only support for a single note is included.
@@ -574,20 +569,10 @@ namespace BackendFramework.Services
                 if (!entry.CitationForm.IsEmpty) // Prefer citation form for vernacular
                 {
                     newWord.Vernacular = entry.CitationForm.FirstValue.Value.Text;
-                    if (proj.VernacularWritingSystem.Bcp47 == "")
-                    {
-                        proj.VernacularWritingSystem.Bcp47 = entry.CitationForm.FirstValue.Key;
-                        _projectService.Update(_projectId, proj);
-                    }
                 }
                 else if (!entry.LexicalForm.IsEmpty) // lexeme form for backup
                 {
                     newWord.Vernacular = entry.LexicalForm.FirstValue.Value.Text;
-                    if (proj.VernacularWritingSystem.Bcp47 == "")
-                    {
-                        proj.VernacularWritingSystem.Bcp47 = entry.LexicalForm.FirstValue.Key;
-                        _projectService.Update(_projectId, proj);
-                    }
                 }
                 else // this is not a word if there is no vernacular
                 {
@@ -770,7 +755,7 @@ namespace BackendFramework.Services
                 /*uncomment this if you want to import semantic domains from a lift-ranges file*/
                 //if (range == "semantic-domain-ddp4")
                 //{
-                //    _sdList.Add(new SemanticDomain() {
+                //    _sdList.Add(new SemanticDomain {
                 //        Name = label.ElementAt(0).Value.Text, Id = abbrev.First().Value.Text });
                 //}
             }

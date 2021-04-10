@@ -1,4 +1,5 @@
 import * as backend from "backend";
+import history, { Path } from "browserHistory";
 import { asyncUpdateOrAddGoal } from "components/GoalTimeline/GoalsActions";
 import { saveChangesToProject } from "components/Project/ProjectActions";
 import {
@@ -8,7 +9,7 @@ import {
 } from "goals/CharInventoryCreation/CharacterInventoryReducer";
 import { StoreState } from "types";
 import { StoreStateDispatch } from "types/actions";
-import { Goal } from "types/goals";
+import { Goal, GoalStatus } from "types/goals";
 import { Project } from "types/project";
 
 export enum CharacterInventoryType {
@@ -124,12 +125,18 @@ export function uploadInventory(goal: Goal) {
   return async (dispatch: StoreStateDispatch, getState: () => StoreState) => {
     const state = getState();
     const changes = getChangesFromState(state);
-    if (changes.length) {
-      goal.changes = { charChanges: changes };
-      await dispatch(asyncUpdateOrAddGoal(goal));
-      const updatedProject = updateCurrentProject(state);
-      await saveChangesToProject(updatedProject, dispatch);
+    if (!changes.length) {
+      exit();
+      return;
     }
+    const updatedProject = updateCurrentProject(state);
+    await saveChangesToProject(updatedProject, dispatch);
+    const updatedGoal: Goal = {
+      ...goal,
+      changes: { charChanges: changes },
+      status: GoalStatus.Completed,
+    };
+    await dispatch(asyncUpdateOrAddGoal(updatedGoal));
   };
 }
 
@@ -168,6 +175,10 @@ export function getAllCharacters() {
 }
 
 // Helper Functions
+
+export function exit() {
+  history.push(Path.Goals);
+}
 
 function countCharacterOccurences(char: string, words: string[]) {
   let count = 0;
@@ -256,6 +267,7 @@ function getChange(
   if (newRej.includes(c)) {
     return [c, CharacterStatus.Undecided, CharacterStatus.Rejected];
   }
+  return undefined;
 }
 
 function updateCurrentProject(state: StoreState): Project {
