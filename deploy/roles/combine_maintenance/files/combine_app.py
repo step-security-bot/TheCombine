@@ -1,5 +1,7 @@
 """Run commands on the Combine services."""
 
+from __future__ import annotations
+
 import enum
 import json
 from pathlib import Path
@@ -12,7 +14,7 @@ from maint_utils import run_cmd
 
 
 @enum.unique
-class Permission(enum.IntEnum):
+class Permission(enum.Enum):
     """Define enumerated type for Combine user permissions."""
 
     WordEntry = 1
@@ -27,10 +29,10 @@ class CombineApp:
 
     def __init__(self, compose_file_path: Path) -> None:
         """Initialize the CombineApp from the configuration file."""
-        if compose_file_path:
-            self.compose_opts = ["-f", str(compose_file_path)]
-        else:
+        if compose_file_path == "":
             self.compose_opts = []
+        else:
+            self.compose_opts = ["-f", str(compose_file_path)]
 
     def set_no_ansi(self) -> None:
         """Add '--no-ansi' to the docker-compose options."""
@@ -43,7 +45,7 @@ class CombineApp:
         *,
         exec_opts: Optional[List[str]] = None,
         check_results: bool = True,
-    ) -> subprocess.CompletedProcess:
+    ) -> subprocess.CompletedProcess[str]:
         """
         Run a docker-compose 'exec' command in a Combine container.
 
@@ -52,10 +54,10 @@ class CombineApp:
                      container that will run the command.
             cmd: A list of strings that specifies the command to be run in the
                      container.
-            exec_opts: A list of addtional options for the docker-compose exec
+            exec_opts: A list of additional options for the docker-compose exec
                      command, for example, to specify a working directory or a
                      specific user to run the command.
-
+            check_results: Indicate if subprocess should not check for failure.
         Returns a subprocess.CompletedProcess.
         """
         exec_opts = exec_opts or []
@@ -86,7 +88,7 @@ class CombineApp:
         container_id = run_cmd(
             ["docker", "ps", "--filter", f"name={service}", "--format", "{{.Names}}"]
         ).stdout.strip()
-        if not container_id:
+        if container_id == "":
             return None
         return container_id
 
@@ -102,16 +104,16 @@ class CombineApp:
             "database", ["/usr/bin/mongo", "--quiet", "CombineDatabase", "--eval", cmd]
         )
         result_str = self.object_id_to_str(db_results.stdout)
-        if result_str:
-            result_dict = json.loads(result_str)
+        if result_str != "":
+            result_dict: Dict[str, Any] = json.loads(result_str)
             return result_dict
         return None
 
-    def start(self, services: List[str]) -> subprocess.CompletedProcess:
+    def start(self, services: List[str]) -> subprocess.CompletedProcess[str]:
         """Start the specified combine service(s)."""
         return run_cmd(["docker-compose"] + self.compose_opts + ["start"] + services)
 
-    def stop(self, services: List[str]) -> subprocess.CompletedProcess:
+    def stop(self, services: List[str]) -> subprocess.CompletedProcess[str]:
         """Stop the specified combine service(s)."""
         return run_cmd(
             ["docker-compose"] + self.compose_opts + ["stop", "--timeout", "0"] + services
@@ -127,7 +129,7 @@ class CombineApp:
             return None
 
         if len(results) == 1:
-            return results[0]["_id"]
+            return results[0]["_id"]  # type: ignore
         if len(results) > 1:
             print(f"More than one project is named {project_name}", file=sys.stderr)
             sys.exit(1)
@@ -139,10 +141,10 @@ class CombineApp:
             f'db.UsersCollection.findOne({{ username: "{user}"}}, {{ username: 1 }})'
         )
         if results is not None:
-            return results["_id"]
+            return results["_id"]  # type: ignore
         results = self.db_cmd(
             f'db.UsersCollection.findOne({{ email: "{user}"}}, {{ username: 1 }})'
         )
         if results is not None:
-            return results["_id"]
+            return results["_id"]  # type: ignore
         return None

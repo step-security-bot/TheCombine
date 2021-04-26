@@ -5,6 +5,7 @@
 # Group: nuc
 #################################################
 
+config_analytics_write_key: ""
 # TheCombine is installed using Ansible and the playbook_install.yml
 # playbook.  It will set the IMAGE_TAG environment variable to
 # value provided by the user and launch docker-compose
@@ -53,5 +54,3 @@ ap_ssid: "{{ansible_hostname}}_ap"
 # ap_passphrase is defined in ./vault.yml
 ap_gateway: "10.10.10.1"
 ap_hostname: "{{ansible_hostname}}"
-
-combine_listen_addr: "{{ ap_gateway }}"

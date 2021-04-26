@@ -8,13 +8,25 @@ import { createBrowserHistory } from "history";
  * information.
  */
 let history = createBrowserHistory();
+// set up analytics for page navigation
+let prevPath = "";
+history.listen((location) => {
+  if (location.pathname !== prevPath) {
+    analytics.track("navigate", {
+      source: prevPath,
+      destination: location.pathname,
+    });
+    prevPath = location.pathname;
+  }
+});
 export default history;
 
 export enum Path {
   DataEntry = "/app/data-entry",
+  GoalCurrent = "/app/goals/current",
   Goals = "/app/goals",
   Login = "/login",
-  ProjInvite = "/app/invite",
+  ProjInvite = "/invite",
   ProjScreen = "/app",
   ProjSettings = "/app/project-settings",
   PwRequest = "/forgot/request",
@@ -25,7 +37,7 @@ export enum Path {
   UserSettings = "/app/user-settings",
 }
 
-// Given a path string (e.g., /app/goals/3),
+// Given a path string (e.g., /app/goals/?param=no),
 // this function returns the longest valid parent (e.g., /app/goals)
 export function getBasePath(pathname: string): Path {
   while (pathname.length) {
@@ -35,4 +47,14 @@ export function getBasePath(pathname: string): Path {
     pathname = pathname.substring(0, pathname.lastIndexOf("/"));
   }
   return Path.Root;
+}
+
+// Open the user guide in a new tab.
+// Leads to a 404 in development.
+export function openUserGuide() {
+  // windows.location.origin doesn't work in all browsers, so define it manually.
+  const loc = window.location;
+  const origin =
+    loc.protocol + "//" + loc.hostname + (loc.port ? ":" + loc.port : "");
+  window.open(`${origin}/docs`);
 }
