@@ -1,4 +1,5 @@
 import axios from "axios";
+import { StatusCodes } from "http-status-codes";
 
 import * as LocalStorage from "backend/localStorage";
 import history, { Path } from "browserHistory";
@@ -30,7 +31,7 @@ backendServer.interceptors.response.use(
     return resp;
   },
   (err) => {
-    if (err.response && err.response.status === 401) {
+    if (err.response && err.response.status === StatusCodes.UNAUTHORIZED) {
       history.push(Path.Login);
     }
     return Promise.reject(err);
@@ -201,6 +202,41 @@ export async function canUploadLift(): Promise<boolean> {
   return resp.data;
 }
 
+/* MergeController.cs */
+
+/** Returns array of ids of the post-merge words. */
+export async function mergeWords(
+  mergeWordsArray: MergeWords[]
+): Promise<string[]> {
+  const resp = await backendServer.put(
+    `projects/${LocalStorage.getProjectId()}/merge`,
+    mergeWordsArray,
+    { headers: authHeader() }
+  );
+  return resp.data;
+}
+
+/** Adds a list of wordIds to current project's merge blacklist. */
+export async function blacklistAdd(wordIds: string[]) {
+  await backendServer.put(
+    `/projects/${LocalStorage.getProjectId()}/merge/blacklist/add`,
+    wordIds,
+    { headers: authHeader() }
+  );
+}
+
+/** Get list of potential duplicates for merging. */
+export async function getDuplicates(
+  maxInList: number,
+  maxLists: number
+): Promise<Word[][]> {
+  const response = await backendServer.get(
+    `/projects/${LocalStorage.getProjectId()}/merge/dups/${maxInList}/${maxLists}/${LocalStorage.getUserId()}`,
+    { headers: authHeader() }
+  );
+  return response.data;
+}
+
 /* ProjectController.cs */
 
 export async function getAllProjects(): Promise<Project[]> {
@@ -341,7 +377,9 @@ export function isUsernameTaken(username: string): Promise<boolean> {
   return backendServer
     .post(`users/checkusername/${username}`)
     .then(() => false)
-    .catch((err) => err.response && err.response.status === 400);
+    .catch(
+      (err) => err.response && err.response.status === StatusCodes.BAD_REQUEST
+    );
 }
 
 /** returns true if the email address is in use already */
@@ -349,7 +387,9 @@ export function isEmailTaken(emailAddress: string): Promise<boolean> {
   return backendServer
     .post(`users/checkemail/${emailAddress}`)
     .then(() => false)
-    .catch((err) => err.response && err.response.status === 400);
+    .catch(
+      (err) => err.response && err.response.status === StatusCodes.BAD_REQUEST
+    );
 }
 
 export async function authenticateUser(
@@ -500,18 +540,6 @@ export async function getWord(id: string): Promise<Word> {
 export async function getAllWords(): Promise<Word[]> {
   let resp = await backendServer.get(
     `projects/${LocalStorage.getProjectId()}/words`,
-    { headers: authHeader() }
-  );
-  return resp.data;
-}
-
-/** Returns array of ids of the post-merge words. */
-export async function mergeWords(
-  mergeWordsArray: MergeWords[]
-): Promise<string[]> {
-  const resp = await backendServer.put(
-    `projects/${LocalStorage.getProjectId()}/words`,
-    mergeWordsArray,
     { headers: authHeader() }
   );
   return resp.data;

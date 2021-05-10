@@ -195,6 +195,11 @@ namespace BackendFramework
             // also to avoid leaking LanguageTag data
             services.AddSingleton<ILiftService, LiftService>();
 
+            // Merge types
+            services.AddTransient<IMergeBlacklistContext, MergeBlacklistContext>();
+            services.AddTransient<IMergeBlacklistRepository, MergeBlacklistRepository>();
+            services.AddTransient<IMergeService, MergeService>();
+
             // Password Reset types
             services.AddTransient<IPasswordResetContext, PasswordResetContext>();
             services.AddTransient<IPasswordResetService, PasswordResetService>();
@@ -239,12 +244,6 @@ namespace BackendFramework
                 // The default HSTS value is 30 days. You may want to change this for production scenarios,
                 // see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
-            }
-
-            // In container deployment, NGINX acts as reverse proxy and handles HTTPS connections.
-            if (!IsInContainer())
-            {
-                app.UseHttpsRedirection();
             }
 
             app.UseRouting();
