@@ -1,6 +1,5 @@
 import MaterialTable from "@material-table/core";
 import { Typography } from "@material-ui/core";
-import React from "react";
 import { Translate } from "react-localize-redux";
 import { useSelector } from "react-redux";
 
@@ -28,6 +27,9 @@ export default function ReviewEntriesTable(props: ReviewEntriesTableProps) {
   const words = useSelector(
     (state: StoreState) => state.reviewEntriesState.words
   );
+  const showDefinitions = useSelector(
+    (state: StoreState) => state.currentProject.definitionsEnabled
+  );
 
   return (
     <Translate>
@@ -39,7 +41,11 @@ export default function ReviewEntriesTable(props: ReviewEntriesTableProps) {
               {translate("reviewEntries.title")}
             </Typography>
           }
-          columns={columns}
+          columns={
+            showDefinitions
+              ? columns
+              : columns.filter((c) => c.field !== "definitions")
+          }
           data={words}
           editable={{
             onRowUpdate: (
@@ -57,6 +63,7 @@ export default function ReviewEntriesTable(props: ReviewEntriesTableProps) {
               }),
           }}
           options={{
+            draggable: false,
             filtering: true,
             pageSize:
               words.length > 0

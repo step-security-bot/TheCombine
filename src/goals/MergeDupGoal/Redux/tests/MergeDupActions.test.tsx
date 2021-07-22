@@ -1,6 +1,7 @@
 import configureMockStore from "redux-mock-store";
 import thunk from "redux-thunk";
 
+import { MergeWords, Word } from "api/models";
 import { MergeDups } from "goals/MergeDupGoal/MergeDups";
 import {
   defaultTree,
@@ -8,10 +9,12 @@ import {
   MergeData,
   MergeTree,
   MergeTreeReference,
+  MergeTreeSense,
 } from "goals/MergeDupGoal/MergeDupStep/MergeDupsTree";
 import {
   dispatchMergeStepData,
   mergeAll,
+  mergeDefinitionIntoSense,
   moveSense,
   orderSense,
 } from "goals/MergeDupGoal/Redux/MergeDupActions";
@@ -22,14 +25,21 @@ import {
 } from "goals/MergeDupGoal/Redux/MergeDupReduxTypes";
 import { goalDataMock } from "goals/MergeDupGoal/Redux/tests/MockMergeDupData";
 import { GoalsState } from "types/goals";
-import {
-  MergeWords,
-  multiSenseWord,
-  multiSenseWordAnyGuid,
-  Sense,
-  Word,
-} from "types/word";
+import { multiSenseWord, newDefinition, newSense, newWord } from "types/word";
+import { randomIntString } from "utilities";
 
+// Used when the guids don't matter.
+export function multiSenseWordAnyGuid(vern: string, glosses: string[]): Word {
+  return {
+    ...newWord(vern),
+    id: randomIntString(),
+    guid: expect.any(String),
+    senses: glosses.map((gloss) => ({
+      ...newSense(gloss),
+      guid: expect.any(String),
+    })),
+  };
+}
 type mockWordListIndex = "WA" | "WB" | "WA2" | "WB2" | "WA3" | "WA4";
 const mockWordList: { [key in mockWordListIndex]: Word } = {
   WA: {
@@ -159,10 +169,10 @@ const data: MergeData = {
     WB: { ...multiSenseWord("BBB", ["Sense 3", "Sense 4"]), id: "WB" },
   },
   senses: {
-    S1: { ...new Sense("Sense 1"), srcWordId: "WA", order: 0 },
-    S2: { ...new Sense("Sense 2"), srcWordId: "WA", order: 1 },
-    S3: { ...new Sense("Sense 3"), srcWordId: "WB", order: 0 },
-    S4: { ...new Sense("Sense 4"), srcWordId: "WB", order: 1 },
+    S1: { ...newSense("Sense 1"), srcWordId: "WA", order: 0 },
+    S2: { ...newSense("Sense 2"), srcWordId: "WA", order: 1 },
+    S3: { ...newSense("Sense 3"), srcWordId: "WB", order: 0 },
+    S4: { ...newSense("Sense 4"), srcWordId: "WB", order: 1 },
   },
 };
 
@@ -307,6 +317,53 @@ describe("MergeDupActions", () => {
       const mockRef: MergeTreeReference = { wordId, mergeSenseId, order: 0 };
       const resultAction = orderSense(mockRef, mockOrder);
       expect(resultAction.type).toEqual(MergeTreeActionTypes.ORDER_DUPLICATE);
+    });
+  });
+
+  describe("mergeDefinitionIntoSense", () => {
+    const defAEn = newDefinition("a", "en");
+    const defAFr = newDefinition("a", "fr");
+    const defBEn = newDefinition("b", "en");
+    let sense: MergeTreeSense;
+
+    beforeEach(() => {
+      sense = newSense() as MergeTreeSense;
+    });
+
+    it("ignores definitions with empty text.", () => {
+      mergeDefinitionIntoSense(sense, newDefinition());
+      expect(sense.definitions).toHaveLength(0);
+      mergeDefinitionIntoSense(sense, newDefinition("", "en"));
+      expect(sense.definitions).toHaveLength(0);
+    });
+
+    it("adds definitions with new languages", () => {
+      mergeDefinitionIntoSense(sense, defAEn);
+      expect(sense.definitions).toHaveLength(1);
+      mergeDefinitionIntoSense(sense, defAFr);
+      expect(sense.definitions).toHaveLength(2);
+    });
+
+    it("only adds definitions with new text", () => {
+      sense.definitions.push({ ...defAEn }, { ...defAFr });
+
+      mergeDefinitionIntoSense(sense, defAFr);
+      expect(sense.definitions).toHaveLength(2);
+      expect(sense.definitions.find((d) => d.language === "fr")!.text).toEqual(
+        defAFr.text
+      );
+
+      const twoEnTexts = `${defAEn.text};${defBEn.text}`;
+      mergeDefinitionIntoSense(sense, defBEn);
+      expect(sense.definitions).toHaveLength(2);
+      expect(sense.definitions.find((d) => d.language === "en")!.text).toEqual(
+        twoEnTexts
+      );
+      mergeDefinitionIntoSense(sense, defAEn);
+      expect(sense.definitions).toHaveLength(2);
+      expect(sense.definitions.find((d) => d.language === "en")!.text).toEqual(
+        twoEnTexts
+      );
     });
   });
 });

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Translate } from "react-localize-redux";
 import { useSelector } from "react-redux";
 
+import { SemanticDomain } from "api/models";
 import TreeView from "components/TreeView";
 import AlignedList, {
   SPACER,
@@ -14,11 +15,11 @@ import {
 } from "goals/ReviewEntries/ReviewEntriesComponent/ReviewEntriesTypes";
 import { StoreState } from "types";
 import { themeColors } from "types/theme";
-import { SemanticDomain } from "types/word";
+import { newSemanticDomain } from "types/word";
 
 interface DomainCellProps {
   rowData: ReviewEntriesWord;
-  sortingByDomains: boolean;
+  sortingByThis?: boolean;
   editDomains?: (guid: string, newDomains: SemanticDomain[]) => void;
 }
 
@@ -39,30 +40,29 @@ export default function DomainCell(props: DomainCellProps) {
   function addDomain() {
     setAddingDomains(false);
     if (props.editDomains && senseToChange) {
-      if (!selectedDomain)
+      if (!selectedDomain) {
         throw new Error(
           "Cannot add domain without the selectedDomain property."
         );
+      }
       props.editDomains(senseToChange.guid, [
         ...senseToChange.domains,
-        {
-          name: selectedDomain.name,
-          id: selectedDomain.id,
-        },
+        newSemanticDomain(selectedDomain.id, selectedDomain.name),
       ]);
     }
   }
 
   function deleteDomain(toDelete: SemanticDomain, sense: ReviewEntriesSense) {
-    if (props.editDomains)
+    if (props.editDomains) {
       props.editDomains(
         sense.guid,
         sense.domains.filter((domain) => domain.id !== toDelete.id)
       );
+    }
   }
 
   function getChipStyle(senseIndex: number, domainIndex: number) {
-    return props.sortingByDomains && senseIndex === 0 && domainIndex === 0
+    return props.sortingByThis && senseIndex === 0 && domainIndex === 0
       ? { backgroundColor: themeColors.highlight }
       : {};
   }
@@ -96,7 +96,7 @@ export default function DomainCell(props: DomainCellProps) {
               <Grid item xs key={`noDomain${sense.guid}`}>
                 <Chip
                   label={<Translate id="reviewEntries.noDomain" />}
-                  color={props.sortingByDomains ? "default" : "secondary"}
+                  color={props.sortingByThis ? "default" : "secondary"}
                   style={getChipStyle(senseIndex, 0)}
                 />
               </Grid>

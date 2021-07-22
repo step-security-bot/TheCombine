@@ -44,6 +44,9 @@ jest.mock("@material-table/core", () => {
 // Mock store + axios
 const mockReviewEntryWords = mockWords();
 const state = {
+  currentProject: {
+    definitionsEnabled: true,
+  },
   reviewEntriesState: {
     words: mockReviewEntryWords,
   },
@@ -59,7 +62,7 @@ const mockStore = configureMockStore([])(state);
 
 function setMockFunctions() {
   mockGetFrontierWords.mockResolvedValue(
-    mockReviewEntryWords.map((w) => mockCreateWord(w))
+    mockReviewEntryWords.map(mockCreateWord)
   );
   mockMaterialTable.mockReturnValue(React.Fragment);
 }
@@ -67,8 +70,8 @@ function setMockFunctions() {
 beforeEach(() => {
   // Prep for component creation
   setMockFunctions();
-  for (let word of mockReviewEntryWords) {
-    for (let sense of word.senses)
+  for (const word of mockReviewEntryWords) {
+    for (const sense of word.senses)
       mockUuid.mockImplementationOnce(() => sense.guid);
   }
 
@@ -76,7 +79,6 @@ beforeEach(() => {
     renderer.create(
       <Provider store={mockStore}>
         <ReviewEntriesComponent
-          clearState={jest.fn()}
           updateAllWords={mockUpdateAllWords}
           updateFrontierWord={jest.fn()}
         />

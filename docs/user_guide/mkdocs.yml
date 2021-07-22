@@ -1,4 +1,3 @@
-site_name: The Combine
 strict: true
 theme:
   name: material
@@ -9,9 +8,25 @@ theme:
     repo: fontawesome/brands/github
   favicon: images/favicon.ico
   language: en
+  # Disable pulling Google fonts from the Internet, to support offline networks.
+  font: false
+site_name: The Combine
+site_url: ""
+use_directory_urls: false
 repo_url: https://github.com/sillsdev/TheCombine
+edit_uri: edit/master/docs/user_guide/docs/
 repo_name: sillsdev/TheCombine
-copyright: © 2020 SIL International
+copyright: © 2019-2021 SIL International
+plugins:
+  - search
+  # This plugin is used to validate URLs (including some anchors).
+  # Uncomment to build the docs with this validation enabled.
+  # This is commented out by default because this requires network I/O to validate URLs, so it is
+  # inherently not exactly reproducible.
+#  - htmlproofer:
+#      raise_error: True
+markdown_extensions:
+  - admonition
 extra:
   social:
     - icon: fontawesome/solid/globe
@@ -36,5 +51,3 @@ nav:
   - Third Party Licenses:
       - Backend: licenses/backend_licenses.txt
       - Frontend: licenses/frontend_licenses.txt
-markdown_extensions:
-  - admonition

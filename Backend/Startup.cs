@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Text.Json.Serialization;
 using BackendFramework.Contexts;
 using BackendFramework.Helper;
 using BackendFramework.Interfaces;
@@ -10,7 +11,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -63,7 +63,7 @@ namespace BackendFramework
         private string? CheckedEnvironmentVariable(string name, string? defaultValue, string error = "")
         {
             var contents = Environment.GetEnvironmentVariable(name);
-            if (contents != null)
+            if (contents is not null)
             {
                 return contents;
             }
@@ -75,7 +75,7 @@ namespace BackendFramework
         /// <summary> Determine if executing within a container (e.g. Docker). </summary>
         private static bool IsInContainer()
         {
-            return Environment.GetEnvironmentVariable("COMBINE_IS_IN_CONTAINER") != null;
+            return Environment.GetEnvironmentVariable("COMBINE_IS_IN_CONTAINER") is not null;
         }
 
         [Serializable]
@@ -135,16 +135,18 @@ namespace BackendFramework
                     };
                 });
 
-            services.AddMvc()
-                .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
-                // NewtonsoftJson needed when porting from .NET Core 2.2 to 3.0
-                // https://dev.to/wattengard/why-your-posted-models-may-stop-working-after-upgrading-to-asp-net-core-3-1-4ekp
-                // TODO: This may be able to be removed by reviewing the raw JSON from the frontend to see if there
-                //    is malformed data, such as an integer sent as a string ("10"). .NET Core 3.0's JSON parser
-                //    no longer automatically tries to coerce these values.
-                .AddNewtonsoftJson();
+            services.AddControllersWithViews()
+                // Required so that integer enum's can be passed in JSON as their descriptive string names, rather
+                //  than by opaque integer values. This makes the OpenAPI schema much more expressive for
+                //  integer enums. https://stackoverflow.com/a/55541764
+                .AddJsonOptions(options =>
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
             services.AddSignalR();
+
+            // Configure Swashbuckle OpenAPI generation.
+            // https://docs.microsoft.com/en-us/aspnet/core/tutorials/getting-started-with-swashbuckle?view=aspnetcore-3.1
+            services.AddSwaggerGen();
 
             services.Configure<Settings>(
                 options =>
@@ -262,9 +264,23 @@ namespace BackendFramework
                 endpoints.MapHub<CombineHub>("/hub");
             });
 
+            // Configure OpenAPI (Formerly Swagger) schema generation
+            const string openApiRoutePrefix = "openapi";
+            app.UseSwagger(c =>
+            {
+                c.RouteTemplate = $"/{openApiRoutePrefix}/{{documentName}}/openapi.{{json|yaml}}";
+            });
+            // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.), specifying the Swagger JSON endpoint.
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint($"/{openApiRoutePrefix}/v1/openapi.json", "Combine API V1");
+                c.RoutePrefix = openApiRoutePrefix;
+            });
+
             // If an admin user has been created via the commandline, treat that as a single action and shut the
             // server down so the calling script knows it's been completed successfully or unsuccessfully.
-            if (CreateAdminUser(app.ApplicationServices.GetService<IUserRepository>()))
+            var userRepo = app.ApplicationServices.GetService<IUserRepository>();
+            if (userRepo is not null && CreateAdminUser(userRepo))
             {
                 _logger.LogInformation("Stopping application");
                 appLifetime.StopApplication();
@@ -312,7 +328,7 @@ namespace BackendFramework
             }
 
             var existingUser = userRepo.GetAllUsers().Result.Find(x => x.Username == username);
-            if (existingUser != null)
+            if (existingUser is not null)
             {
                 _logger.LogInformation($"User {username} already exists. Updating password and granting " +
                                        "admin permissions.");

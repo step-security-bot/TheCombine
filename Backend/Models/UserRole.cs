@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -9,14 +10,17 @@ namespace BackendFramework.Models
     /// <summary> The permissions a <see cref="User"/> has on a particular <see cref="Project"/> </summary>
     public class UserRole
     {
+        [Required]
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
         /// <summary> Integer representation of <see cref="Permission"/> </summary>
+        [Required]
         [BsonElement("permissions")]
-        public List<int> Permissions { get; set; }
+        public List<Permission> Permissions { get; set; }
 
+        [Required]
         [BsonElement("projectId")]
         public string ProjectId { get; set; }
 
@@ -24,7 +28,7 @@ namespace BackendFramework.Models
         {
             Id = "";
             ProjectId = "";
-            Permissions = new List<int>();
+            Permissions = new List<Permission>();
         }
 
         public UserRole Clone()
@@ -33,7 +37,7 @@ namespace BackendFramework.Models
             {
                 Id = (string)Id.Clone(),
                 ProjectId = (string)ProjectId.Clone(),
-                Permissions = new List<int>()
+                Permissions = new List<Permission>()
             };
 
             foreach (var permission in Permissions)
@@ -54,7 +58,7 @@ namespace BackendFramework.Models
 
         public override bool Equals(object? obj)
         {
-            if (!(obj is UserRole other) || GetType() != obj.GetType())
+            if (obj is not UserRole other || GetType() != obj.GetType())
             {
                 return false;
             }
@@ -70,10 +74,8 @@ namespace BackendFramework.Models
 
     public enum Permission
     {
-        /// <summary> Database Admin, has no limitations </summary>
-        // TODO: This "permission" is redundant with User.IsAdmin() and feels out of place because it isn't a
-        //    "Project-specific" permission like the others in this enum.
-        DatabaseAdmin = 6,
+        /// <summary> Project Owner by default should be given to the user who created the project </summary>
+        Owner = 6,
 
         /// <summary> Project Admin, can edit project settings and add and remove users, change userRoles </summary>
         DeleteEditSettingsAndUsers = 5,

@@ -1,4 +1,5 @@
-﻿# User guide build environment.
+
+# User guide build environment.
 FROM python:3.8 AS user_guide_builder
 
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -28,7 +29,7 @@ COPY . ./
 RUN npm run build
 
 # Production environment.
-FROM nginx:1.19
+FROM nginx:1.21
 
 WORKDIR /app
 

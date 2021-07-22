@@ -32,7 +32,7 @@ namespace BackendFramework.Services
         protected override void InsertPronunciationIfNeeded(
             LexEntry entry, List<string> propertiesAlreadyOutput)
         {
-            if (entry.Pronunciations.FirstOrDefault() != null && entry.Pronunciations.First().Forms.Any())
+            if (entry.Pronunciations.FirstOrDefault() is not null && entry.Pronunciations.First().Forms.Any())
             {
                 foreach (var phonetic in entry.Pronunciations)
                 {
@@ -143,7 +143,7 @@ namespace BackendFramework.Services
         public bool DeleteExport(string userId)
         {
             var removeSuccessful = _liftExports.Remove(userId, out var filePath);
-            if (removeSuccessful)
+            if (removeSuccessful && filePath is not null)
             {
                 File.Delete(filePath);
             }
@@ -281,7 +281,7 @@ namespace BackendFramework.Services
             }
             else // Make a new lift-ranges file
             {
-                using var liftRangesWriter = XmlWriter.Create(rangesDest, new XmlWriterSettings
+                await using var liftRangesWriter = XmlWriter.Create(rangesDest, new XmlWriterSettings
                 {
                     Indent = true,
                     NewLineOnAttributes = true,
@@ -343,7 +343,12 @@ namespace BackendFramework.Services
             // Compress everything.
             var destinationFileName = Path.Combine(exportDir,
                 Path.Combine($"LiftExportCompressed-{proj.Id}_{DateTime.Now:yyyy-MM-dd_hh-mm-ss}.zip"));
-            ZipFile.CreateFromDirectory(Path.GetDirectoryName(zipDir), destinationFileName);
+            var zipParentDir = Path.GetDirectoryName(zipDir);
+            if (zipParentDir is null)
+            {
+                throw new Exception($"Unable to find parent dir of: {zipDir}");
+            }
+            ZipFile.CreateFromDirectory(zipParentDir, destinationFileName);
 
             // Clean up the temporary folder structure that was compressed.
             Directory.Delete(liftExportDir, true);
@@ -384,23 +389,39 @@ namespace BackendFramework.Services
             foreach (var currentSense in activeSenses)
             {
                 // Merge in senses
-                var dict = new Dictionary<string, string>();
-                foreach (var gloss in currentSense.Glosses)
+                const string sep = ";";
+                var defDict = new Dictionary<string, string>();
+                foreach (var def in currentSense.Definitions)
                 {
-                    if (dict.ContainsKey(gloss.Language))
+                    if (defDict.ContainsKey(def.Language))
                     {
                         // This is an unexpected situation but rather than crashing or losing data we
-                        // will just append extra definitions for the language with a semicolon separator
-                        dict[gloss.Language] = $"{dict[gloss.Language]};{gloss.Def}";
+                        // will just append extra definitions for the language with a separator.
+                        defDict[def.Language] = $"{defDict[def.Language]}{sep}{def.Text}";
                     }
                     else
                     {
-                        dict.Add(gloss.Language, gloss.Def);
+                        defDict.Add(def.Language, def.Text);
+                    }
+                }
+                var glossDict = new Dictionary<string, string>();
+                foreach (var gloss in currentSense.Glosses)
+                {
+                    if (glossDict.ContainsKey(gloss.Language))
+                    {
+                        // This is an unexpected situation but rather than crashing or losing data we
+                        // will just append extra definitions for the language with a separator.
+                        glossDict[gloss.Language] = $"{glossDict[gloss.Language]}{sep}{gloss.Def}";
+                    }
+                    else
+                    {
+                        glossDict.Add(gloss.Language, gloss.Def);
                     }
                 }
 
                 var lexSense = new LexSense();
-                lexSense.Gloss.MergeIn(MultiTextBase.Create(dict));
+                lexSense.Definition.MergeIn(MultiTextBase.Create(defDict));
+                lexSense.Gloss.MergeIn(MultiTextBase.Create(glossDict));
                 lexSense.Id = currentSense.Guid.ToString();
                 entry.Senses.Add(lexSense);
 
@@ -594,6 +615,12 @@ namespace BackendFramework.Services
                         Guid = new Guid(sense.Id)
                     };
 
+                    // Add definitions
+                    foreach (var (key, value) in sense.Definition)
+                    {
+                        newSense.Definitions.Add(new Definition { Language = key, Text = value.Text });
+                    }
+
                     // Add glosses
                     foreach (var (key, value) in sense.Gloss)
                     {
@@ -658,7 +685,7 @@ namespace BackendFramework.Services
             /// <summary> Creates the object to transfer all the data from a word </summary>
             public LiftEntry GetOrMakeEntry(Extensible info, int order)
             {
-                return new LiftEntry(info, info.Guid, order)
+                return new(info, info.Guid, order)
                 {
                     LexicalForm = new LiftMultiText(),
                     CitationForm = new LiftMultiText()
@@ -668,7 +695,11 @@ namespace BackendFramework.Services
             /// <summary> Creates an empty sense object and adds it to the entry </summary>
             public LiftSense GetOrMakeSense(LiftEntry entry, Extensible info, string rawXml)
             {
-                var sense = new LiftSense(info, info.Guid, entry) { Gloss = new LiftMultiText() };
+                var sense = new LiftSense(info, info.Guid, entry)
+                {
+                    Definition = new LiftMultiText(),
+                    Gloss = new LiftMultiText()
+                };
                 entry.Senses.Add(sense);
                 return sense;
             }
@@ -692,7 +723,16 @@ namespace BackendFramework.Services
                 extensible.Fields.Add(fieldEntry);
             }
 
-            /// <summary> Adds senses to the entry </summary>
+            /// <summary> Adds sense's definitions to the entry. </summary>
+            public void MergeInDefinition(LiftSense sense, LiftMultiText multiText)
+            {
+                foreach (var (key, value) in multiText)
+                {
+                    sense.Definition.Add(key, value.Text);
+                }
+            }
+
+            /// <summary> Adds sense's glosses to the entry. </summary>
             public void MergeInGloss(LiftSense sense, LiftMultiText multiText)
             {
                 foreach (var (key, value) in multiText)
@@ -760,7 +800,7 @@ namespace BackendFramework.Services
             // They may be useful later if we need to add more complex attributes to words in The Combine
             public LiftExample GetOrMakeExample(LiftSense sense, Extensible info)
             {
-                return new LiftExample { Content = new LiftMultiText() };
+                return new() { Content = new LiftMultiText() };
             }
 
             public LiftObject GetOrMakeParentReversal(LiftObject parent, LiftMultiText contents, string type)
@@ -770,7 +810,11 @@ namespace BackendFramework.Services
 
             public LiftSense GetOrMakeSubsense(LiftSense sense, Extensible info, string rawXml)
             {
-                return new LiftSense(info, new Guid(), sense) { Gloss = new LiftMultiText() };
+                return new(info, new Guid(), sense)
+                {
+                    Definition = new LiftMultiText(),
+                    Gloss = new LiftMultiText()
+                };
             }
 
             public LiftObject MergeInEtymology(LiftEntry entry, string source, string type, LiftMultiText form,
@@ -791,7 +835,6 @@ namespace BackendFramework.Services
             }
 
             public void EntryWasDeleted(Extensible info, DateTime dateDeleted) { }
-            public void MergeInDefinition(LiftSense sense, LiftMultiText liftMultiText) { }
             public void MergeInExampleForm(LiftExample example, LiftMultiText multiText) { }
             public void MergeInGrammaticalInfo(LiftObject senseOrReversal, string val, List<Trait> traits) { }
 

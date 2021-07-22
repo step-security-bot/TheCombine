@@ -55,7 +55,7 @@ namespace BackendFramework.Repositories
         public async Task<Project?> Create(Project project)
         {
             // Confirm that project name isn't empty or taken
-            if (string.IsNullOrEmpty(project.Name) || await GetProjectIdByName(project.Name) != null)
+            if (string.IsNullOrEmpty(project.Name) || await GetProjectIdByName(project.Name) is not null)
             {
                 return null;
             }
@@ -82,7 +82,7 @@ namespace BackendFramework.Repositories
                 return ResultOfUpdate.Failed;
             }
             var projectIdWithName = await GetProjectIdByName(project.Name);
-            if (projectIdWithName != null && projectIdWithName != project.Id)
+            if (projectIdWithName is not null && projectIdWithName != project.Id)
             {
                 return ResultOfUpdate.Failed;
             }
@@ -94,6 +94,7 @@ namespace BackendFramework.Repositories
                 .Set(x => x.Name, project.Name)
                 .Set(x => x.IsActive, project.IsActive)
                 .Set(x => x.LiftImported, project.LiftImported)
+                .Set(x => x.DefinitionsEnabled, project.DefinitionsEnabled)
                 .Set(x => x.SemanticDomains, project.SemanticDomains)
                 .Set(x => x.VernacularWritingSystem, project.VernacularWritingSystem)
                 .Set(x => x.AnalysisWritingSystems, project.AnalysisWritingSystems)

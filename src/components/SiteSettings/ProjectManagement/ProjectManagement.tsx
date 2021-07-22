@@ -2,10 +2,10 @@ import { List, ListItem, Typography } from "@material-ui/core";
 import React from "react";
 import { LocalizeContextProps, withLocalize } from "react-localize-redux";
 
+import { Project } from "api/models";
 import { getAllProjects } from "backend";
-import ExportProjectButton from "components/ProjectExport";
+import ExportButton from "components/ProjectExport/ExportButton";
 import ProjectButtonWithConfirmation from "components/SiteSettings/ProjectManagement/ProjectButtonWithConfirmation";
-import { Project } from "types/project";
 import theme from "types/theme";
 
 interface ProjectManagementState {
@@ -47,7 +47,7 @@ export class ProjectManagement extends React.Component<
             {project.name}
           </Typography>
           {/* Export Lift file */}
-          <ExportProjectButton
+          <ExportButton
             projectId={project.id}
             buttonProps={{ style: { marginRight: theme.spacing(1) } }}
           />

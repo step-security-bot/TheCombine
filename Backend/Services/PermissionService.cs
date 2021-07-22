@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using BackendFramework.Helper;
 using BackendFramework.Interfaces;
 using BackendFramework.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
 using MongoDB.Bson;
 
 namespace BackendFramework.Services
@@ -54,8 +54,25 @@ namespace BackendFramework.Services
         {
             var jsonToken = GetJwt(request);
             var userRoleInfo = ((JwtSecurityToken)jsonToken).Payload["UserRoleInfo"].ToString();
-            var permissionsObj = JsonConvert.DeserializeObject<List<ProjectPermissions>>(userRoleInfo);
-            return permissionsObj;
+            // If unable to parse permissions, return empty permissions.
+            if (userRoleInfo is null)
+            {
+                return new List<ProjectPermissions>();
+            }
+
+            var permissions = JsonSerializer.Deserialize<List<ProjectPermissions>>(userRoleInfo);
+            return permissions ?? new List<ProjectPermissions>();
+        }
+
+        public async Task<bool> IsSiteAdmin(HttpContext request)
+        {
+            var userId = GetUserId(request);
+            var user = await _userRepo.GetUser(userId);
+            if (user is null)
+            {
+                return false;
+            }
+            return user.IsAdmin;
         }
 
         public async Task<bool> HasProjectPermission(HttpContext request, Permission permission)
@@ -93,7 +110,7 @@ namespace BackendFramework.Services
             {
                 if (projectEntry.ProjectId == projId)
                 {
-                    if (projectEntry.Permissions.Contains((int)permission))
+                    if (projectEntry.Permissions.Contains(permission))
                     {
                         return true;
                     }
@@ -213,13 +230,13 @@ namespace BackendFramework.Services
 
     public class ProjectPermissions
     {
-        public ProjectPermissions(string projectId, List<int> permissions)
+        public ProjectPermissions(string projectId, List<Permission> permissions)
         {
             ProjectId = projectId;
             Permissions = permissions;
         }
         public string ProjectId { get; }
-        public List<int> Permissions { get; }
+        public List<Permission> Permissions { get; }
     }
 }
 

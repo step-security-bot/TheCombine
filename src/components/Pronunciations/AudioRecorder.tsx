@@ -1,5 +1,3 @@
-import React from "react";
-
 import Recorder from "components/Pronunciations/Recorder";
 import RecorderIcon from "components/Pronunciations/RecorderIcon";
 
@@ -11,10 +9,9 @@ interface RecorderProps {
 
 export function getFileNameForWord(wordId: string): string {
   var fourCharParts = wordId.match(/.{1,6}/g);
-  var compressed =
-    fourCharParts === null
-      ? ["unknownword"]
-      : fourCharParts.map((i) => Number("0x" + i).toString(36));
+  var compressed = fourCharParts?.map((i) => Number("0x" + i).toString(36)) ?? [
+    "unknownword",
+  ];
   return compressed.join("") + "_" + new Date().getTime().toString(36);
 }
 

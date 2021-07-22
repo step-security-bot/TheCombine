@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json;
 
 namespace BackendFramework.Models
 {
     public class Word
     {
+        [Required]
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
@@ -19,46 +19,60 @@ namespace BackendFramework.Models
         /// This Guid is important for Lift round-tripping with other applications and must remain stable through
         /// Word edits.
         /// </summary>
+        [Required]
         [BsonElement("guid")]
         public Guid Guid { get; set; }
 
+        [Required]
         [BsonElement("vernacular")]
         public string Vernacular { get; set; }
 
+        /// <summary> Not implemented in frontend. </summary>
         [BsonElement("plural")]
         public string Plural { get; set; }
 
+        [Required]
         [BsonElement("senses")]
         public List<Sense> Senses { get; set; }
 
+        [Required]
         [BsonElement("audio")]
         public List<string> Audio { get; set; }
 
+        [Required]
         [BsonElement("created")]
         public string Created { get; set; }
 
+        [Required]
         [BsonElement("modified")]
         public string Modified { get; set; }
 
+        [Required]
         [BsonElement("accessibility")]
         [BsonRepresentation(BsonType.String)]
         public State Accessibility { get; set; }
 
+        [Required]
         [BsonElement("history")]
         public List<string> History { get; set; }
 
+        /// <summary> Not implemented in frontend. </summary>
         [BsonElement("partOfSpeech")]
         public string PartOfSpeech { get; set; }
 
+        /// <summary> Not implemented in frontend. </summary>
         [BsonElement("editedBy")]
         public List<string> EditedBy { get; set; }
 
+        /// <summary> Not implemented in frontend. </summary>
         [BsonElement("otherField")]
         public string OtherField { get; set; }
 
+        [Required]
         [BsonElement("projectId")]
         public string ProjectId { get; set; }
 
+        [Required]
         [BsonElement("note")]
         public Note Note { get; set; }
 
@@ -144,7 +158,7 @@ namespace BackendFramework.Models
 
         public override bool Equals(object? obj)
         {
-            if (!(obj is Word other) || GetType() != obj.GetType())
+            if (obj is not Word other || GetType() != obj.GetType())
             {
                 return false;
             }
@@ -187,9 +201,11 @@ namespace BackendFramework.Models
     public class Note
     {
         /// <summary> The bcp-47 code for the language the note is written in. </summary>
+        [Required]
         public string Language { get; set; }
 
         /// <summary> The contents of the note. </summary>
+        [Required]
         public string Text { get; set; }
 
         public Note()
@@ -206,7 +222,7 @@ namespace BackendFramework.Models
 
         public Note Clone()
         {
-            return new Note
+            return new()
             {
                 Language = (string)Language.Clone(),
                 Text = (string)Text.Clone()
@@ -221,7 +237,7 @@ namespace BackendFramework.Models
 
         public override bool Equals(object? obj)
         {
-            if (!(obj is Note other) || GetType() != obj.GetType())
+            if (obj is not Note other || GetType() != obj.GetType())
             {
                 return false;
             }
@@ -241,15 +257,23 @@ namespace BackendFramework.Models
         /// This Guid is important for Lift round-tripping with other applications and must remain stable through Word
         /// edits.
         /// </summary>
+        [Required]
         [BsonElement("guid")]
         public Guid Guid { get; set; }
 
+        [Required]
+        [BsonElement("Definitions")]
+        public List<Definition> Definitions { get; set; }
+
+        [Required]
         [BsonElement("Glosses")]
         public List<Gloss> Glosses { get; set; }
 
+        [Required]
         [BsonElement("SemanticDomains")]
         public List<SemanticDomain> SemanticDomains { get; set; }
 
+        [Required]
         [BsonElement("accessibility")]
         [BsonRepresentation(BsonType.String)]
         public State Accessibility { get; set; }
@@ -259,6 +283,7 @@ namespace BackendFramework.Models
             // By default generate a new, unique Guid for each new Sense.
             Guid = Guid.NewGuid();
             Accessibility = State.Active;
+            Definitions = new List<Definition>();
             Glosses = new List<Gloss>();
             SemanticDomains = new List<SemanticDomain>();
         }
@@ -269,10 +294,15 @@ namespace BackendFramework.Models
             {
                 Guid = Guid,
                 Accessibility = Accessibility,
+                Definitions = new List<Definition>(),
                 Glosses = new List<Gloss>(),
                 SemanticDomains = new List<SemanticDomain>()
             };
 
+            foreach (var definition in Definitions)
+            {
+                clone.Definitions.Add(definition.Clone());
+            }
             foreach (var gloss in Glosses)
             {
                 clone.Glosses.Add(gloss.Clone());
@@ -287,7 +317,7 @@ namespace BackendFramework.Models
 
         public override bool Equals(object? obj)
         {
-            if (!(obj is Sense other) || GetType() != obj.GetType())
+            if (obj is not Sense other || GetType() != obj.GetType())
             {
                 return false;
             }
@@ -295,25 +325,69 @@ namespace BackendFramework.Models
             return
                 other.Guid == Guid &&
                 other.Accessibility == Accessibility &&
+                other.Definitions.Count == Definitions.Count &&
+                other.Definitions.All(Definitions.Contains) &&
                 other.Glosses.Count == Glosses.Count &&
                 other.Glosses.All(Glosses.Contains) &&
-
                 other.SemanticDomains.Count == SemanticDomains.Count &&
                 other.SemanticDomains.All(SemanticDomains.Contains);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Guid, Accessibility, Glosses, SemanticDomains);
+            return HashCode.Combine(Guid, Accessibility, Definitions, Glosses, SemanticDomains);
+        }
+    }
+
+    public class Definition
+    {
+        /// <summary> The bcp-47 code for the language the definition is written in. </summary>
+        [Required]
+        public string Language { get; set; }
+
+        /// <summary> The definition string. </summary>
+        [Required]
+        public string Text { get; set; }
+
+        public Definition()
+        {
+            Language = "";
+            Text = "";
+        }
+
+        public Definition Clone()
+        {
+            return new()
+            {
+                Language = (string)Language.Clone(),
+                Text = (string)Text.Clone()
+            };
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is not Definition other || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            return Language.Equals(other.Language) && Text.Equals(other.Text);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Language, Text);
         }
     }
 
     public class Gloss
     {
-        /// <summary> The bcp-47 code for the language the note is written in. </summary>
+        /// <summary> The bcp-47 code for the language the gloss is written in. </summary>
+        [Required]
         public string Language { get; set; }
 
         /// <summary> The gloss string. </summary>
+        [Required]
         public string Def { get; set; }
 
         public Gloss()
@@ -324,7 +398,7 @@ namespace BackendFramework.Models
 
         public Gloss Clone()
         {
-            return new Gloss
+            return new()
             {
                 Language = (string)Language.Clone(),
                 Def = (string)Def.Clone()
@@ -333,7 +407,7 @@ namespace BackendFramework.Models
 
         public override bool Equals(object? obj)
         {
-            if (!(obj is Gloss other) || GetType() != obj.GetType())
+            if (obj is not Gloss other || GetType() != obj.GetType())
             {
                 return false;
             }
@@ -349,13 +423,16 @@ namespace BackendFramework.Models
 
     public class SemanticDomain
     {
+        [Required]
         public string Name { get; set; }
+        [Required]
         public string Id { get; set; }
+        [Required]
         public string Description { get; set; }
 
         public SemanticDomain Clone()
         {
-            return new SemanticDomain
+            return new()
             {
                 Name = (string)Name.Clone(),
                 Id = (string)Id.Clone(),
@@ -372,7 +449,7 @@ namespace BackendFramework.Models
 
         public override bool Equals(object? obj)
         {
-            if (!(obj is SemanticDomain other) || GetType() != obj.GetType())
+            if (obj is not SemanticDomain other || GetType() != obj.GetType())
             {
                 return false;
             }
@@ -389,8 +466,11 @@ namespace BackendFramework.Models
     /// <summary> Helper object that contains a file along with its name and path </summary>
     public class FileUpload
     {
+        [Required]
         public IFormFile? File { get; set; }
+        [Required]
         public string Name { get; set; }
+        [Required]
         public string FilePath { get; set; }
 
         /// <summary> Models by ASP.NET Core POSTs must have a constructor with zero arguments. </summary>
@@ -408,7 +488,9 @@ namespace BackendFramework.Models
     /// </summary>
     public class MergeWords
     {
+        [Required]
         public Word Parent { get; set; }
+        [Required]
         public List<MergeSourceWord> Children { get; set; }
 
         public MergeWords()
@@ -419,10 +501,15 @@ namespace BackendFramework.Models
     }
 
     /// <summary> Helper object that contains a wordId and the type of merge that should be performed </summary>
+    /// <remarks>
+    /// This is used in a [FromBody] serializer, so its attributes must be defined as properties.
+    /// </remarks>
     public class MergeSourceWord
     {
-        public string SrcWordId;
-        public bool GetAudio;
+        [Required]
+        public string SrcWordId { get; set; }
+        [Required]
+        public bool GetAudio { get; set; }
 
         public MergeSourceWord()
         {
@@ -431,13 +518,11 @@ namespace BackendFramework.Models
         }
     }
 
-    /// <summary> Information about the state of the word in that database used for merging </summary>
-    [JsonConverter(typeof(StringEnumConverter))]
+    /// <summary> Information about the state of the word or sense used for merging. </summary>
     public enum State
     {
         Active,
         Deleted,
-        Sense,
         Duplicate,
         Separate
     }

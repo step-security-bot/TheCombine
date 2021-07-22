@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { renderHook, act } from "@testing-library/react-hooks";
 import userEvent from "@testing-library/user-event";
 import React from "react";
+import { Key } from "ts-key-enum";
 
 import MockDomain from "components/TreeView/tests/MockSemanticDomain";
 import {
@@ -9,7 +10,6 @@ import {
   TreeHeaderProps,
   useTreeViewNavigation,
 } from "components/TreeView/TreeViewHeader";
-import SemanticDomainWithSubdomains from "types/SemanticDomain";
 
 // Handles
 const MOCK_ANIMATE = jest.fn();
@@ -52,7 +52,7 @@ describe("TreeViewHeader", () => {
       // Simulate the user typing the enter key
       const simulatedEnterKey: Partial<React.KeyboardEvent> = {
         bubbles: true,
-        key: "Enter",
+        key: Key.Enter,
         preventDefault: jest.fn(),
         target: keyboardTarget,
         stopPropagation: MOCK_STOP_PROP,
@@ -133,7 +133,7 @@ describe("TreeViewHeader", () => {
     });
 
     it("switches on a length 5 number", () => {
-      const leafNode: SemanticDomainWithSubdomains =
+      const leafNode =
         MockDomain.subdomains[2].subdomains[0].subdomains[0].subdomains[0];
 
       const { result } = renderHook(() => useTreeViewNavigation(testProps));
@@ -255,7 +255,7 @@ describe("TreeViewHeader", () => {
     const keyDownHandler = eventListeners.get("keydown");
     expect(keyDownHandler).not.toBeUndefined();
     const simulatedArrowKey: Partial<KeyboardEvent> = {
-      key: "ArrowRight",
+      key: Key.ArrowRight,
     };
     keyDownHandler!.call(null, simulatedArrowKey as Event);
     // verify that we would switch to the domain requested
@@ -267,7 +267,7 @@ describe("TreeViewHeader", () => {
     const keyDownHandler = eventListeners.get("keydown");
     expect(keyDownHandler).not.toBeUndefined();
     const simulatedArrowKey: Partial<KeyboardEvent> = {
-      key: "ArrowLeft",
+      key: Key.ArrowLeft,
     };
     keyDownHandler!.call(null, simulatedArrowKey as Event);
     // verify that we would switch to the domain requested
@@ -279,7 +279,7 @@ describe("TreeViewHeader", () => {
     const keyDownHandler = eventListeners.get("keydown");
     expect(keyDownHandler).not.toBeUndefined();
     const simulatedArrowKey: Partial<KeyboardEvent> = {
-      key: "ArrowUp",
+      key: Key.ArrowUp,
     };
     keyDownHandler!.call(null, simulatedArrowKey as Event);
     // verify that we would switch to the domain requested

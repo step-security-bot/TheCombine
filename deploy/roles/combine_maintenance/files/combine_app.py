@@ -22,6 +22,7 @@ class Permission(enum.Enum):
     MergeAndCharSet = 3
     ImportExport = 4
     DeleteEditSettingsAndUsers = 5
+    Owner = 6
 
 
 class CombineApp:
@@ -29,7 +30,7 @@ class CombineApp:
 
     def __init__(self, compose_file_path: Path) -> None:
         """Initialize the CombineApp from the configuration file."""
-        if compose_file_path == "":
+        if str(compose_file_path) == "":
             self.compose_opts = []
         else:
             self.compose_opts = ["-f", str(compose_file_path)]
@@ -45,7 +46,7 @@ class CombineApp:
         *,
         exec_opts: Optional[List[str]] = None,
         check_results: bool = True,
-    ) -> subprocess.CompletedProcess:
+    ) -> subprocess.CompletedProcess[str]:
         """
         Run a docker-compose 'exec' command in a Combine container.
 
@@ -109,11 +110,25 @@ class CombineApp:
             return result_dict
         return None
 
-    def start(self, services: List[str]) -> subprocess.CompletedProcess:
+    def db_query(
+        self, collection: str, query: str, projection: str = "{}"
+    ) -> List[Dict[str, Any]]:
+        """Run the supplied database query returning an Array."""
+        cmd = f"db.{collection}.find({query}, {projection}).toArray()"
+        db_results = self.exec(
+            "database", ["/usr/bin/mongo", "--quiet", "CombineDatabase", "--eval", cmd]
+        )
+        result_str = self.object_id_to_str(db_results.stdout)
+        if result_str != "":
+            result_array: List[Dict[str, Any]] = json.loads(result_str)
+            return result_array
+        return []
+
+    def start(self, services: List[str]) -> subprocess.CompletedProcess[str]:
         """Start the specified combine service(s)."""
         return run_cmd(["docker-compose"] + self.compose_opts + ["start"] + services)
 
-    def stop(self, services: List[str]) -> subprocess.CompletedProcess:
+    def stop(self, services: List[str]) -> subprocess.CompletedProcess[str]:
         """Stop the specified combine service(s)."""
         return run_cmd(
             ["docker-compose"] + self.compose_opts + ["stop", "--timeout", "0"] + services
@@ -129,7 +144,7 @@ class CombineApp:
             return None
 
         if len(results) == 1:
-            return results[0]["_id"]
+            return results[0]["_id"]  # type: ignore
         if len(results) > 1:
             print(f"More than one project is named {project_name}", file=sys.stderr)
             sys.exit(1)
@@ -141,10 +156,16 @@ class CombineApp:
             f'db.UsersCollection.findOne({{ username: "{user}"}}, {{ username: 1 }})'
         )
         if results is not None:
-            return results["_id"]
+            return results["_id"]  # type: ignore
         results = self.db_cmd(
             f'db.UsersCollection.findOne({{ email: "{user}"}}, {{ username: 1 }})'
         )
         if results is not None:
-            return results["_id"]
+            return results["_id"]  # type: ignore
         return None
+
+    def get_project_roles(self, proj_id: str, perm: Permission) -> List[Dict[str, Any]]:
+        """Get the list of all user roles for a project that have the requested permission set."""
+        query = f"{{projectId: '{proj_id}', permissions: {{ $all: [{perm.value}]}}}}"
+        result_fields = "{projectId: 1, permissions: 1}"
+        return self.db_query("UserRolesCollection", query, result_fields)
