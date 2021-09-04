@@ -53,7 +53,7 @@ export default function ProjectSettingsComponent() {
   }, [permissions, setImports]);
 
   return (
-    <Grid container justify="center" spacing={6}>
+    <Grid container justifyContent="center" spacing={6}>
       {/* Project List */}
       <BaseSettingsComponent
         icon={<List />}
@@ -88,7 +88,7 @@ export default function ProjectSettingsComponent() {
             imports ? (
               <ProjectImport />
             ) : (
-              <Typography variant="caption">
+              <Typography variant="body2">
                 <Translate id="projectSettings.import.notAllowed" />
               </Typography>
             )

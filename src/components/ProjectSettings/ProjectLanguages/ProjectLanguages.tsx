@@ -8,7 +8,7 @@ import {
   Search,
 } from "@material-ui/icons";
 import { LanguagePicker, languagePickerStrings_en } from "mui-language-picker";
-import React from "react";
+import React, { ReactElement } from "react";
 import { Translate } from "react-localize-redux";
 
 import { Project, WritingSystem } from "api/models";
@@ -89,7 +89,7 @@ export default class ProjectLanguages extends React.Component<
     );
   }
 
-  writingSystemButtons(index: number) {
+  writingSystemButtons(index: number): ReactElement | undefined {
     if (index === 0) {
       return;
     }
@@ -100,12 +100,14 @@ export default class ProjectLanguages extends React.Component<
           textId="projectSettings.language.makeDefaultAnalysisLanguage"
           small
           onClick={() => this.setNewAnalysisDefault(index)}
+          buttonId={`analysis-language-${index}-bump`}
         />
         <IconButtonWithTooltip
           icon={<Delete fontSize="inherit" />}
           textId="projectSettings.language.deleteAnalysisLanguage"
           small
           onClick={() => this.deleteAnalysisWritingSystem(index)}
+          buttonId={`analysis-language-${index}-delete`}
         />
       </React.Fragment>
     );
@@ -161,15 +163,18 @@ export default class ProjectLanguages extends React.Component<
             </Grid>{" "}
             <Grid item>
               <IconButton
-                id="submitNewLang"
                 disabled={!this.isNewWritingSystem()}
                 onClick={() => this.addAnalysisWritingSystem()}
+                id="analysis-language-new-confirm"
               >
                 <Done />
               </IconButton>
             </Grid>{" "}
             <Grid item>
-              <IconButton onClick={() => this.resetState()}>
+              <IconButton
+                onClick={() => this.resetState()}
+                id="analysis-language-new-clear"
+              >
                 <Clear />
               </IconButton>
             </Grid>
@@ -180,11 +185,13 @@ export default class ProjectLanguages extends React.Component<
               icon={<Add />}
               textId="projectSettings.language.addAnalysisLanguage"
               onClick={() => this.setState({ add: true })}
+              buttonId={`analysis-language-new`}
             />
             <IconButtonWithTooltip
               icon={<Search />}
               textId="projectSettings.language.getGlossLanguages"
               onClick={() => this.getActiveAnalysisLangs()}
+              buttonId={`analysis-language-get`}
             />
             {this.state.langsInProject}
           </React.Fragment>
@@ -197,10 +204,12 @@ export default class ProjectLanguages extends React.Component<
 interface ImmutableWritingSystemProps {
   ws: WritingSystem;
   index?: number;
-  buttons?: JSX.Element;
+  buttons?: ReactElement;
 }
 
-function ImmutableWritingSystem(props: ImmutableWritingSystemProps) {
+function ImmutableWritingSystem(
+  props: ImmutableWritingSystemProps
+): ReactElement {
   return (
     <Grid container spacing={1}>
       {props.index !== undefined && (

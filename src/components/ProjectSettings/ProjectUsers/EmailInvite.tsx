@@ -78,13 +78,14 @@ class EmailInvite extends React.Component<InviteProps, InviteState> {
   render() {
     return (
       <React.Fragment>
-        <Grid container justify="center">
+        <Grid container justifyContent="center">
           <Card style={{ width: 450 }}>
             <CardContent>
               <Typography variant="h5" align="center" gutterBottom>
                 <Translate id="projectSettings.invite.inviteByEmailLabel" />
               </Typography>
               <TextField
+                id="project-user-invite-email"
                 required
                 label={<Translate id="projectSettings.invite.emailLabel" />}
                 onChange={(e) => this.updateEmailField(e)}
@@ -95,19 +96,21 @@ class EmailInvite extends React.Component<InviteProps, InviteState> {
                 inputProps={{ maxLength: 100 }}
               />
               <TextField
+                id="project-user-invite-message"
                 label="Message"
                 onChange={(e) => this.updateMessageField(e)}
                 variant="outlined"
                 style={{ width: "100%" }}
                 margin="normal"
-              ></TextField>
-              <Grid container justify="flex-end" spacing={2}>
+              />
+              <Grid container justifyContent="flex-end" spacing={2}>
                 <Grid item>
                   <LoadingDoneButton
                     disabled={!this.state.isValid}
                     loading={this.state.loading}
                     done={this.state.done}
                     buttonProps={{
+                      id: "project-user-invite-submit",
                       onClick: () => this.onSubmit(),
                       variant: "contained",
                       color: "primary",

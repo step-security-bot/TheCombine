@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using BackendFramework.Interfaces;
 using BackendFramework.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -14,7 +13,6 @@ namespace BackendFramework.Controllers
     [Authorize]
     [Produces("application/json")]
     [Route("v1/projects/{projectId}/merge")]
-    [EnableCors("AllowAll")]
     public class MergeController : Controller
     {
         private readonly IMergeService _mergeService;
@@ -47,6 +45,21 @@ namespace BackendFramework.Controllers
             {
                 return BadRequest("Merge failed.");
             }
+        }
+
+        /// <summary> Undo merge </summary>
+        /// <returns> True if merge was successfully undone </returns>
+        [HttpPut("undo", Name = "UndoMerge")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(bool))]
+        public async Task<IActionResult> UndoMerge(string projectId, [FromBody, BindRequired] MergeUndoIds merge)
+        {
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.MergeAndCharSet))
+            {
+                return Forbid();
+            }
+
+            var undo = await _mergeService.UndoMerge(projectId, merge);
+            return Ok(undo);
         }
 
         /// <summary> Add List of <see cref="Word"/>Ids to merge blacklist </summary>

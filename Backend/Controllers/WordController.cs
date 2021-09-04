@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using BackendFramework.Interfaces;
 using BackendFramework.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -13,7 +12,6 @@ namespace BackendFramework.Controllers
     [Authorize]
     [Produces("application/json")]
     [Route("v1/projects/{projectId}/words")]
-    [EnableCors("AllowAll")]
     public class WordController : Controller
     {
         private readonly IProjectRepository _projRepo;
@@ -107,6 +105,23 @@ namespace BackendFramework.Controllers
                 return NotFound(wordId);
             }
             return Ok(word);
+        }
+
+        /// <summary> Checks if Frontier nonempty for specified <see cref="Project"/>. </summary>
+        [HttpGet("isfrontiernonempty", Name = "IsFrontierNonempty")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(bool))]
+        public async Task<IActionResult> IsFrontierNonempty(string projectId)
+        {
+            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
+            {
+                return Forbid();
+            }
+            var project = await _projRepo.GetProject(projectId);
+            if (project is null)
+            {
+                return NotFound(projectId);
+            }
+            return Ok(await _wordRepo.IsFrontierNonempty(projectId));
         }
 
         /// <summary> Returns all Frontier <see cref="Word"/> in specified <see cref="Project"/>. </summary>
