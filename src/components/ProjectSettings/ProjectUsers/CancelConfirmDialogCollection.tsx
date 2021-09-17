@@ -1,10 +1,4 @@
-import {
-  IconButton,
-  Menu,
-  MenuItem,
-  MenuItemProps,
-  Tooltip,
-} from "@material-ui/core";
+import { IconButton, Menu, MenuItem, Tooltip } from "@material-ui/core";
 import MoreVertIcon from "@material-ui/icons/MoreVert";
 import React, { useState } from "react";
 import { Translate } from "react-localize-redux";
@@ -18,8 +12,15 @@ import { addOrUpdateUserRole, removeUserRole } from "backend";
 import CancelConfirmDialog from "components/Buttons/CancelConfirmDialog";
 import { asyncRefreshCurrentProjectUsers } from "components/Project/ProjectActions";
 
+const idAffix = "user-options";
+const idRemoveUser = `${idAffix}-remove`;
+const idAddAdmin = `${idAffix}-admin-add`;
+const idRemoveAdmin = `${idAffix}-admin-remove`;
+const idMakeOwner = `${idAffix}-owner-make`;
+
 interface CancelConfirmDialogCollectionProps {
   userId: string;
+  currentUserId: string;
   isProjectOwner: boolean;
   userIsProjectAdmin: boolean;
 }
@@ -35,6 +36,7 @@ export default function CancelConfirmDialogCollection(
   const [removeUserDialogOpen, setRemoveUser] = useState<boolean>(false);
   const [makeAdminDialogOpen, setMakeAdmin] = useState<boolean>(false);
   const [removeAdminDialogOpen, setRemoveAdmin] = useState<boolean>(false);
+  const [makeOwnerDialogOpen, setMakeOwner] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<Element | undefined>(undefined);
 
   function removeUser(userId: string) {
@@ -103,11 +105,51 @@ export default function CancelConfirmDialogCollection(
       });
   }
 
-  const managementOptions: React.ReactElement<MenuItemProps>[] = [
+  function makeOwner(userId: string) {
+    addOrUpdateUserRole(
+      [
+        Permission.WordEntry,
+        Permission.Unused,
+        Permission.MergeAndCharSet,
+        Permission.ImportExport,
+        Permission.DeleteEditSettingsAndUsers,
+        Permission.Owner,
+      ],
+      userId
+    )
+      .then(() => {
+        addOrUpdateUserRole(
+          [
+            Permission.WordEntry,
+            Permission.Unused,
+            Permission.MergeAndCharSet,
+            Permission.ImportExport,
+            Permission.DeleteEditSettingsAndUsers,
+          ],
+          props.currentUserId
+        );
+      })
+      .then(() => {
+        setMakeOwner(false);
+        setAnchorEl(undefined);
+        toast(
+          <Translate id="projectSettings.userManagement.makeOwnerToastSuccess" />
+        );
+        dispatch(asyncRefreshCurrentProjectUsers());
+      })
+      .catch((err) => {
+        console.error(err);
+        toast(
+          <Translate id="projectSettings.userManagement.makeOwnerToastFailure" />
+        );
+      });
+  }
+
+  const managementOptions = [
     <MenuItem
-      key="removeUser"
+      key={idRemoveUser}
+      id={idRemoveUser}
       onClick={() => setRemoveUser(true)}
-      id="user-remove"
     >
       <Translate id="buttons.removeFromProject" />
     </MenuItem>,
@@ -115,22 +157,34 @@ export default function CancelConfirmDialogCollection(
   if (props.isProjectOwner) {
     const adminOption = props.userIsProjectAdmin ? (
       <MenuItem
-        key="removeAdmin"
+        key={idRemoveAdmin}
+        id={idRemoveAdmin}
         onClick={() => setRemoveAdmin(true)}
-        id="user-admin-remove"
       >
         <Translate id="buttons.removeAdmin" />
       </MenuItem>
     ) : (
       <MenuItem
-        key="addAdmin"
+        key={idAddAdmin}
+        id={idAddAdmin}
         onClick={() => setMakeAdmin(true)}
-        id="user-admin-add"
       >
         <Translate id="buttons.makeAdmin" />
       </MenuItem>
     );
     managementOptions.push(adminOption);
+
+    if (props.userIsProjectAdmin) {
+      managementOptions.push(
+        <MenuItem
+          key={idMakeOwner}
+          id={idMakeOwner}
+          onClick={() => setMakeOwner(true)}
+        >
+          <Translate id="buttons.makeOwner" />
+        </MenuItem>
+      );
+    }
   }
 
   return (
@@ -140,38 +194,46 @@ export default function CancelConfirmDialogCollection(
         textId="projectSettings.userManagement.removeUserWarning"
         handleCancel={() => setRemoveUser(false)}
         handleConfirm={() => removeUser(props.userId)}
-        buttonIdCancel="user-remove-cancel"
-        buttonIdConfirm="user-remove-confirm"
+        buttonIdCancel={`${idRemoveUser}-cancel`}
+        buttonIdConfirm={`${idRemoveUser}-confirm`}
       />
       <CancelConfirmDialog
         open={makeAdminDialogOpen}
         textId="projectSettings.userManagement.makeAdminWarning"
         handleCancel={() => setMakeAdmin(false)}
         handleConfirm={() => makeAdmin(props.userId)}
-        buttonIdCancel="user-admin-add-cancel"
-        buttonIdConfirm="user-admin-add-confirm"
+        buttonIdCancel={`${idAddAdmin}-cancel`}
+        buttonIdConfirm={`${idAddAdmin}-confirm`}
       />
       <CancelConfirmDialog
         open={removeAdminDialogOpen}
         textId="projectSettings.userManagement.removeAdminWarning"
         handleCancel={() => setRemoveAdmin(false)}
         handleConfirm={() => removeAdmin(props.userId)}
-        buttonIdCancel="user-admin-remove-cancel"
-        buttonIdConfirm="user-admin-remove-confirm"
+        buttonIdCancel={`${idRemoveAdmin}-cancel`}
+        buttonIdConfirm={`${idRemoveAdmin}-confirm`}
+      />
+      <CancelConfirmDialog
+        open={makeOwnerDialogOpen}
+        textId="projectSettings.userManagement.makeOwnerWarning"
+        handleCancel={() => setMakeOwner(false)}
+        handleConfirm={() => makeOwner(props.userId)}
+        buttonIdCancel={`${idMakeOwner}-cancel`}
+        buttonIdConfirm={`${idMakeOwner}-confirm`}
       />
       <Tooltip
         title={<Translate id="projectSettings.userManagement.manageUser" />}
         placement="right"
       >
         <IconButton
-          id="user-options"
+          id={idAffix}
           onClick={(event) => setAnchorEl(event.currentTarget)}
         >
           <MoreVertIcon />
         </IconButton>
       </Tooltip>
       <Menu
-        id="user-options-menu"
+        id={`${idAffix}-menu`}
         anchorEl={anchorEl}
         keepMounted
         open={Boolean(anchorEl)}
