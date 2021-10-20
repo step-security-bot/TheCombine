@@ -12,7 +12,6 @@ namespace BackendFramework.Helper
     {
         private const string CombineFilesDir = ".CombineFiles";
         private const string AvatarsDir = "Avatars";
-        private const string ExportDir = "Export";
         private static readonly string ImportExtractedLocation = Path.Combine("Import", "ExtractedLocation");
         private static readonly string LiftImportSuffix = Path.Combine(ImportExtractedLocation, "Lift");
         private static readonly string AudioPathSuffix = Path.Combine(LiftImportSuffix, "audio");
@@ -23,7 +22,7 @@ namespace BackendFramework.Helper
             Avatar
         }
 
-        /// <summary> Indicates that an error occured locating the current user's home directory. </summary>
+        /// <summary> Indicates that an error occurred locating the current user's home directory. </summary>
         [Serializable]
         public class HomeFolderNotFoundException : Exception { }
 

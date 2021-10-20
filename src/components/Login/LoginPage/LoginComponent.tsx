@@ -12,9 +12,12 @@ import ReCaptcha from "@matt-block/react-recaptcha-v2";
 import React from "react";
 import { Translate } from "react-localize-redux";
 
+import { BannerType } from "api/models";
+import { getBannerText } from "backend";
 import history, { openUserGuide, Path } from "browserHistory";
 import LoadingButton from "components/Buttons/LoadingButton";
 import { RuntimeConfig } from "types/runtimeConfig";
+import theme from "types/theme";
 
 const idAffix = "login";
 
@@ -34,6 +37,7 @@ interface LoginState {
   password: string;
   isVerified: boolean;
   error: LoginError;
+  loginBanner: string;
 }
 
 interface LoginError {
@@ -41,19 +45,21 @@ interface LoginError {
   password: boolean;
 }
 
+/** The login page (also doubles as a logout page) */
 export default class Login extends React.Component<
   LoginDispatchProps & LoginStateProps,
   LoginState
 > {
   constructor(props: LoginDispatchProps & LoginStateProps) {
     super(props);
-    this.props.logout(); //Hitting the login page will log a user out (doubles as a logout page, essentially)
+    this.props.logout(); // Loading this page will reset the app, both store and localStorage
 
     this.state = {
       username: "",
       password: "",
       isVerified: !RuntimeConfig.getInstance().captchaRequired(),
       error: { username: false, password: false },
+      loginBanner: "",
     };
   }
 
@@ -63,6 +69,9 @@ export default class Login extends React.Component<
 
   componentDidMount() {
     this.props.reset();
+    getBannerText(BannerType.Login).then((loginBanner) =>
+      this.setState({ loginBanner })
+    );
   }
 
   /** Updates the state to match the value in a textbox */
@@ -183,13 +192,15 @@ export default class Login extends React.Component<
                     onSuccess={() => this.setState({ isVerified: true })}
                     onExpire={() => this.setState({ isVerified: false })}
                     onError={() =>
-                      console.log("Something went wrong, check your conenction")
+                      console.error(
+                        "Something went wrong, check your connection."
+                      )
                     }
                   />
                 </div>
               )}
 
-              {/* Register and Login buttons */}
+              {/* User Guide, Register, and Login buttons */}
               <Grid container justifyContent="flex-end" spacing={2}>
                 <Grid item xs={4} sm={6}>
                   <Button id={`${idAffix}-guide`} onClick={openUserGuide}>
@@ -222,6 +233,18 @@ export default class Login extends React.Component<
                   </LoadingButton>
                 </Grid>
               </Grid>
+
+              {/* Login announcement banner */}
+              {!!this.state.loginBanner && (
+                <Typography
+                  style={{
+                    marginTop: theme.spacing(2),
+                    padding: theme.spacing(1),
+                  }}
+                >
+                  {this.state.loginBanner}
+                </Typography>
+              )}
             </CardContent>
           </form>
         </Card>

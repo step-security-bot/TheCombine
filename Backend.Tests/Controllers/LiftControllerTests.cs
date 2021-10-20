@@ -229,6 +229,7 @@ namespace Backend.Tests.Controllers
         private static RoundTripObj[] _roundTripCases =
         {
             new("Gusillaay.zip", "gsl-Qaaa-x-orth", new List<string>(), 8045),
+            new("GusillaayNoTopLevelFolder.zip", "gsl-Qaaa-x-orth", new List<string>(), 8045),
             new("Lotud.zip", "dtr", new List<string>(), 5400),
             new("Natqgu.zip", "qaa-x-stc-natqgu", new List<string>(), 11570),
             new("Resembli.zip", "ags", new List<string>(), 255),
@@ -293,7 +294,7 @@ namespace Backend.Tests.Controllers
 
             // Export.
             var exportedFilePath = _liftController.CreateLiftExport(proj1.Id).Result;
-            var exportedDirectory = FileOperations.ExtractZipFile(exportedFilePath, null, false);
+            var exportedDirectory = FileOperations.ExtractZipFile(exportedFilePath, null);
 
             // Assert the file was created with desired hierarchy.
             Assert.That(Directory.Exists(exportedDirectory));

@@ -139,7 +139,7 @@ namespace BackendFramework.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(User))]
         public async Task<IActionResult> GetUserByEmail(string email)
         {
-            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.Owner))
+            if (!_permissionService.IsCurrentUserAuthorized(HttpContext))
             {
                 return Forbid();
             }
@@ -166,24 +166,25 @@ namespace BackendFramework.Controllers
             return Ok(user.Id);
         }
 
-        /// <summary> Checks whether specified username is taken. </summary>
+        /// <summary> Checks whether specified username is taken or empty. </summary>
         [AllowAnonymous]
         [HttpGet("isusernametaken/{username}", Name = "CheckUsername")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(bool))]
         public async Task<IActionResult> CheckUsername(string username)
         {
-            var isAvailable = await _userRepo.GetUserByUsername(username) is null;
-            return Ok(!isAvailable);
+            var isUnavailable = string.IsNullOrWhiteSpace(username)
+                || await _userRepo.GetUserByUsername(username) is not null;
+            return Ok(isUnavailable);
         }
 
-        /// <summary> Checks whether specified email address is taken. </summary>
+        /// <summary> Checks whether specified email address is taken or empty. </summary>
         [AllowAnonymous]
         [HttpGet("isemailtaken/{email}", Name = "CheckEmail")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(bool))]
         public async Task<IActionResult> CheckEmail(string email)
         {
-            var isAvailable = await _userRepo.GetUserByEmail(email) is null;
-            return Ok(!isAvailable);
+            var isUnavailable = string.IsNullOrWhiteSpace(email) || await _userRepo.GetUserByEmail(email) is not null;
+            return Ok(isUnavailable);
         }
 
         /// <summary> Updates <see cref="User"/> with specified id. </summary>
@@ -192,16 +193,12 @@ namespace BackendFramework.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(string))]
         public async Task<IActionResult> UpdateUser(string userId, [FromBody, BindRequired] User user)
         {
-            // The model seems to have flaws, and this prevents an admin from editing a user's user edits
-            // One solution is to change the updating user roles so that the backend updates a user's
-            // worked projects when it updates their user roles
-            //
-            // For the record, commenting this out was Mark's idea, not Micah's
-            //
-            // if (!_permissionService.IsUserIdAuthenticated(HttpContext, userId))
-            // {
-            //     return Forbid();
-            // }
+            if (!_permissionService.IsUserIdAuthorized(HttpContext, userId)
+                && !await _permissionService.IsSiteAdmin(HttpContext))
+            {
+                return Forbid();
+            }
+
             var result = await _userRepo.Update(userId, user);
             return result switch
             {

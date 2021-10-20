@@ -1,13 +1,15 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { StatusCodes } from "http-status-codes";
 
 import * as Api from "api";
 import {
+  BannerType,
   EmailInviteStatus,
   MergeUndoIds,
   MergeWords,
   Permission,
   Project,
+  SiteBanner,
   User,
   UserEdit,
   UserRole,
@@ -17,6 +19,7 @@ import { BASE_PATH } from "api/base";
 import * as LocalStorage from "backend/localStorage";
 import history, { Path } from "browserHistory";
 import authHeader from "components/Login/AuthHeaders";
+import Swal from "sweetalert2";
 import { Goal, GoalStep } from "types/goals";
 import { convertGoalToEdit } from "types/goalUtilities";
 import { RuntimeConfig } from "types/runtimeConfig";
@@ -28,16 +31,53 @@ const config = new Api.Configuration(config_parameters);
 
 // Create an axios instance to allow for attaching interceptors to it.
 const axiosInstance = axios.create({ baseURL: apiBaseURL });
-axiosInstance.interceptors.response.use(undefined, (err) => {
-  if (err.response && err.response.status === StatusCodes.UNAUTHORIZED) {
-    history.push(Path.Login);
+axiosInstance.interceptors.response.use(undefined, (err: AxiosError) => {
+  // Any status codes that falls outside the range of 2xx cause this function to
+  // trigger.
+  const url = err.config.url;
+  const errorToast = Swal.mixin({
+    toast: true,
+    position: "bottom",
+    showConfirmButton: false,
+    timer: 5000,
+    timerProgressBar: true,
+    icon: "error",
+    showCancelButton: true,
+    cancelButtonText: "Dismiss",
+  });
+
+  const response = err.response;
+  if (response) {
+    const status = response.status;
+    if (status === StatusCodes.UNAUTHORIZED) {
+      history.push(Path.Login);
+    }
+
+    // Check for fatal errors (4xx-5xx).
+    if (
+      status >= StatusCodes.BAD_REQUEST &&
+      status <= StatusCodes.NETWORK_AUTHENTICATION_REQUIRED
+    ) {
+      errorToast.fire({
+        title: `${status} ${response.statusText}`,
+        text: `${response.data}\n${err.config.url}`,
+      });
+    }
+  } else {
+    // Handle if backend is not reachable.
+    errorToast.fire({
+      title: `${err.message}`,
+      text: `Unable to connect to server. Check your network settings.\n${url}`,
+    });
   }
+
   return Promise.reject(err);
 });
 
 // Configured OpenAPI interfaces.
 const audioApi = new Api.AudioApi(config, BASE_PATH, axiosInstance);
 const avatarApi = new Api.AvatarApi(config, BASE_PATH, axiosInstance);
+const bannerApi = new Api.BannerApi(config, BASE_PATH, axiosInstance);
 const inviteApi = new Api.InviteApi(config, BASE_PATH, axiosInstance);
 const liftApi = new Api.LiftApi(config, BASE_PATH, axiosInstance);
 const mergeApi = new Api.MergeApi(config, BASE_PATH, axiosInstance);
@@ -99,22 +139,30 @@ export async function avatarSrc(userId: string): Promise<string> {
   const options = { headers: authHeader(), responseType: "arraybuffer" };
   try {
     const resp = await avatarApi.downloadAvatar({ userId }, options);
-    const image = btoa(
-      new Uint8Array(resp.data).reduce(
-        (data, byte) => data + String.fromCharCode(byte),
-        ""
-      )
-    );
+    const image = Buffer.from(resp.data, "base64").toString("base64");
     return `data:${resp.headers["content-type"].toLowerCase()};base64,${image}`;
-  } catch {
-    // Avatar fetching can fail if hasAvatar=True but the avater path is broken.
-    const user = await getUser(userId);
-    if (user.hasAvatar) {
-      user.hasAvatar = false;
-      await updateUser(user);
-    }
+  } catch (e) {
+    // Avatar fetching can fail if hasAvatar=True but the avatar path is broken.
+    console.error(e);
     return "";
   }
+}
+
+/* BannerController.cs */
+
+/**
+ * Get the Banners from the backend.
+ *
+ * Note: This function does not require authentication. Anonymous users can
+ * pull the banners since their purpose is to help give more context about
+ * the server.
+ */
+export async function getBannerText(type: BannerType): Promise<string> {
+  return (await bannerApi.getBanner({ type })).data.text;
+}
+
+export async function updateBanner(siteBanner: SiteBanner): Promise<boolean> {
+  return (await bannerApi.updateBanner({ siteBanner }, defaultOptions())).data;
 }
 
 /* InviteController.cs */
@@ -254,7 +302,7 @@ export async function getAllActiveProjectsByUser(
     } catch (err) {
       /** If there was an error, the project probably was manually deleted
        from the database or is ill-formatted. */
-      console.log(err);
+      console.error(err);
     }
   }
   return projects;

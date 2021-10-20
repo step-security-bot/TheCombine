@@ -4,12 +4,12 @@ A project is for a single vernacular language.
 
 ## Create a Project
 
-![Create Project - Yiddish](images/projectCreateTzotzil.png)
+![Create Project - Yiddish](images/projectCreateTzotzil.png){ .center }
 
 ### Vernacular and Analysis Languages
 
 The _vernacular language_ is the language for which words are being collected. This is usually a local, indigenous,
-minority, autochthonous, heritage, or endangered langauge or dialect.
+minority, autochthonous, heritage, or endangered language or dialect.
 
 The _analysis language_ is the language into which the vernacular language is being translated. This is usually a
 regional, national, official, or majority language of the location where the vernacular is used.
@@ -78,6 +78,27 @@ definition support in [Data Cleanup](goals.md).
 
 ### Project Users
 
-List of users on the project.
+#### Current Users
 
-Tool to add users to the project.
+Beside each project user is an icon with three vertical dots. If you are the project owner, you can click this to open a
+user management menu with the following options:
+
+- Remove from Project;
+- Make/Remove Admin;
+- Make Owner (if they are a project admin).
+
+!!! important
+
+    There is only one Owner per project. If you "Make Owner" another user, you will move from Owner to Admin for the project and no longer be able to make/remove Admin on other users or archive the project.
+
+#### Add Users
+
+Either search existing users (shows all users with the search term in their name, username, or email address), or invite
+new users by email address (they will be automatically added to the project when they make an account via the
+invitation).
+
+### Archive Project
+
+This is only available to the project Owner. Archiving a project makes it inaccessible to all users. This can only be
+undone by a site administrator. Please contact a site administrator if you wish for the project to be entirely deleted
+from the servers.
