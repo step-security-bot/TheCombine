@@ -16,6 +16,7 @@ import {
   WritingSystem,
 } from "api/models";
 import * as backend from "backend";
+import { DataEntryContext } from "components/DataEntry/DataEntryContext";
 import NewEntry from "components/DataEntry/DataEntryTable/NewEntry/NewEntry";
 import RecentEntry from "components/DataEntry/DataEntryTable/RecentEntry/RecentEntry";
 import { getFileNameForWord } from "components/Pronunciations/AudioRecorder";
@@ -28,7 +29,6 @@ export const exitButtonId = "exit-to-domain-tree";
 
 interface DataEntryTableProps {
   semanticDomain: SemanticDomain;
-  displaySemanticDomainView: (isGettingSemanticDomain: boolean) => void;
   getWordsFromBackend: () => Promise<Word[]>;
   showExistingData: () => void;
   isSmallScreen: boolean;
@@ -609,41 +609,57 @@ export class DataEntryTable extends React.Component<
             ) : null}
           </Grid>
           <Grid item>
-            <Button
-              id={exitButtonId}
-              type="submit"
-              variant="contained"
-              color={this.state.isReady ? "primary" : "secondary"}
-              style={{ marginTop: theme.spacing(2) }}
-              endIcon={<ExitToApp />}
-              tabIndex={-1}
-              onClick={() => {
-                // Check if there is a new word, but the user clicked complete instead of pressing enter
-                if (this.refNewEntry.current) {
-                  const newEntry = this.refNewEntry.current.state.newEntry;
-                  if (!newEntry.senses.length) {
-                    newEntry.senses.push(
-                      newSense(undefined, undefined, this.props.semanticDomain)
-                    );
-                  }
-                  const newEntryAudio =
-                    this.refNewEntry.current.state.audioFileURLs;
-                  if (newEntry && newEntry.vernacular) {
-                    this.addNewWord(newEntry, newEntryAudio, undefined, true);
-                    this.refNewEntry.current.resetState();
-                  }
-                }
+            <DataEntryContext.Consumer>
+              {({ openDomainTree }) => (
+                <Button
+                  id={exitButtonId}
+                  type="submit"
+                  variant="contained"
+                  color={this.state.isReady ? "primary" : "secondary"}
+                  style={{ marginTop: theme.spacing(2) }}
+                  endIcon={<ExitToApp />}
+                  tabIndex={-1}
+                  onClick={() => {
+                    // Check if there is a new word, but the user clicked complete instead of pressing enter
+                    if (this.refNewEntry.current) {
+                      const newEntry = this.refNewEntry.current.state.newEntry;
+                      if (!newEntry.senses.length) {
+                        newEntry.senses.push(
+                          newSense(
+                            undefined,
+                            undefined,
+                            this.props.semanticDomain
+                          )
+                        );
+                      }
+                      const newEntryAudio =
+                        this.refNewEntry.current.state.audioFileURLs;
+                      if (newEntry && newEntry.vernacular) {
+                        this.addNewWord(
+                          newEntry,
+                          newEntryAudio,
+                          undefined,
+                          true
+                        );
+                        this.refNewEntry.current.resetState();
+                      }
+                    }
 
-                // Reset everything
-                this.props.hideQuestions();
-                this.setState({ defunctWordIds: [], recentlyAddedWords: [] });
+                    // Reset everything
+                    this.props.hideQuestions();
+                    this.setState({
+                      defunctWordIds: [],
+                      recentlyAddedWords: [],
+                    });
 
-                // Reveal the TreeView, hiding DataEntry
-                this.props.displaySemanticDomainView(true);
-              }}
-            >
-              <Translate id="buttons.complete" />
-            </Button>
+                    // Reveal the TreeView, hiding DataEntry
+                    openDomainTree();
+                  }}
+                >
+                  <Translate id="buttons.complete" />
+                </Button>
+              )}
+            </DataEntryContext.Consumer>
           </Grid>
         </Grid>
       </form>

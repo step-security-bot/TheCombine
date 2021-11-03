@@ -5,6 +5,7 @@ import { LocalizeContextProps, withLocalize } from "react-localize-redux";
 import { SemanticDomain, State, Word } from "api/models";
 import { getFrontierWords } from "backend";
 import AppBar from "components/AppBar/AppBarComponent";
+import { DataEntryContext } from "components/DataEntry/DataEntryContext";
 import DataEntryHeader from "components/DataEntry/DataEntryHeader/DataEntryHeader";
 import DataEntryTable from "components/DataEntry/DataEntryTable/DataEntryTable";
 import { ExistingDataTable } from "components/DataEntry/ExistingDataTable/ExistingDataTable";
@@ -18,7 +19,6 @@ interface DataEntryProps {
 }
 
 interface DataEntryState {
-  displaySemanticDomain: boolean;
   existingWords: Word[];
   domainWords: DomainWord[];
   isSmallScreen: boolean;
@@ -99,7 +99,6 @@ export class DataEntryComponent extends React.Component<
   constructor(props: DataEntryProps & LocalizeContextProps) {
     super(props);
     this.state = {
-      displaySemanticDomain: true,
       existingWords: [],
       domainWords: [],
       isSmallScreen: window.matchMedia("(max-width: 960px)").matches,
@@ -160,11 +159,6 @@ export class DataEntryComponent extends React.Component<
             <Divider />
             <DataEntryTable
               semanticDomain={semanticDomain}
-              displaySemanticDomainView={(isGettingSemanticDomain: boolean) => {
-                this.setState({
-                  displaySemanticDomain: isGettingSemanticDomain,
-                });
-              }}
               getWordsFromBackend={() => this.getWordsFromBackend()}
               showExistingData={() => this.toggleDrawer(true)}
               isSmallScreen={this.state.isSmallScreen}
@@ -182,22 +176,26 @@ export class DataEntryComponent extends React.Component<
           toggleDrawer={this.toggleDrawer}
         />
 
-        <Dialog fullScreen open={this.state.displaySemanticDomain}>
-          <AppBar />
-          <TreeViewComponent
-            returnControlToCaller={() =>
-              this.getWordsFromBackend().then(() => {
-                this.setState((prevState) => ({
-                  domainWords: sortDomainWordByVern(
-                    prevState.existingWords,
-                    this.props.domain
-                  ),
-                  displaySemanticDomain: false,
-                }));
-              })
-            }
-          />
-        </Dialog>
+        <DataEntryContext.Consumer>
+          {({ domainTreeOpen, closeDomainTree }) => (
+            <Dialog fullScreen open={domainTreeOpen}>
+              <AppBar />
+              <TreeViewComponent
+                returnControlToCaller={() =>
+                  this.getWordsFromBackend().then(() => {
+                    this.setState((prevState) => ({
+                      domainWords: sortDomainWordByVern(
+                        prevState.existingWords,
+                        this.props.domain
+                      ),
+                    }));
+                    closeDomainTree();
+                  })
+                }
+              />
+            </Dialog>
+          )}
+        </DataEntryContext.Consumer>
       </Grid>
     );
   }

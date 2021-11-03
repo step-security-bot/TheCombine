@@ -63,7 +63,6 @@ beforeEach(() => {
       <Provider store={mockStore}>
         <DataEntryTable
           semanticDomain={mockSemanticDomain}
-          displaySemanticDomainView={jest.fn()}
           isSmallScreen={false}
           hideQuestions={hideQuestionsMock}
           getWordsFromBackend={getWordsFromBackendMock}

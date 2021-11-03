@@ -3,6 +3,7 @@ import React from "react";
 import { Translate } from "react-localize-redux";
 
 import history, { Path } from "browserHistory";
+import { DataEntryContext } from "components/DataEntry/DataEntryContext";
 import { tabColor } from "types/theme";
 
 interface NavigationButtonsProps {
@@ -26,19 +27,24 @@ export default function NavigationButtons(props: NavigationButtonsProps) {
       >
         <Translate id="appBar.dataEntry" />
       </Button>
-      <Button
-        id="goals"
-        onClick={() => {
-          history.push(Path.Goals);
-        }}
-        color="inherit"
-        style={{
-          width: "min-content",
-          background: tabColor(props.currentTab, Path.Goals),
-        }}
-      >
-        <Translate id="appBar.dataCleanup" />
-      </Button>
+      <DataEntryContext.Consumer>
+        {({ openDomainTree }) => (
+          <Button
+            id="goals"
+            onClick={() => {
+              openDomainTree();
+              history.push(Path.Goals);
+            }}
+            color="inherit"
+            style={{
+              width: "min-content",
+              background: tabColor(props.currentTab, Path.Goals),
+            }}
+          >
+            <Translate id="appBar.dataCleanup" />
+          </Button>
+        )}
+      </DataEntryContext.Consumer>
     </React.Fragment>
   );
 }
