@@ -7,7 +7,6 @@ import TreeDepiction from "components/TreeView/TreeDepiction";
 import TreeSearch from "components/TreeView/TreeSearch";
 import TreeSemanticDomain from "components/TreeView/TreeSemanticDomain";
 import { createDomains } from "components/TreeView/TreeViewReducer";
-
 // Domain data
 import en from "resources/semantic-domains/en.json";
 import es from "resources/semantic-domains/es.json";
@@ -55,14 +54,12 @@ export class TreeView extends React.Component<
     if (this.props.currentDomain.name) {
       this.props.navigateTree(props.currentDomain);
     } else {
-      let newDomain = createDomains(domains);
+      const newDomain = createDomains(domains);
       // If the current domain is the default then set the name to the translation of "Semantic Domain"
-      if (newDomain.currentDomain.name === "") {
-        newDomain.currentDomain.name = this.props.translate(
-          "addWords.domain"
-        ) as string;
+      if (!newDomain.name) {
+        newDomain.name = this.props.translate("addWords.domain") as string;
       }
-      this.props.navigateTree(newDomain.currentDomain);
+      this.props.navigateTree(newDomain);
     }
   }
 
@@ -71,7 +68,7 @@ export class TreeView extends React.Component<
       this.setState({ visible: false });
       return new Promise((resolve) =>
         setTimeout(() => {
-          if (domain && this.state.visible === false) {
+          if (domain && !this.state.visible) {
             if (domain.id !== this.props.currentDomain.id) {
               this.props.navigateTree(domain);
               this.setState({ visible: true });

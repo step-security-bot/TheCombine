@@ -9,11 +9,6 @@ import {
 } from "api/models";
 import * as backend from "backend";
 import { asyncUpdateGoal } from "components/GoalTimeline/Redux/GoalActions";
-import { MergeDups } from "goals/MergeDupGoal/MergeDups";
-import {
-  MergesCompleted,
-  MergeStepData,
-} from "goals/MergeDupGoal/MergeDupsTypes";
 import {
   defaultSidebar,
   Hash,
@@ -21,10 +16,16 @@ import {
   MergeTreeSense,
   Sidebar,
 } from "goals/MergeDupGoal/MergeDupStep/MergeDupsTree";
+import { MergeDups } from "goals/MergeDupGoal/MergeDups";
+import {
+  MergesCompleted,
+  MergeStepData,
+} from "goals/MergeDupGoal/MergeDupsTypes";
 import {
   ClearTreeMergeAction,
   CombineSenseMergeAction,
   MergeTreeActionTypes,
+  MergeTreeState,
   MoveDuplicateMergeAction,
   MoveSenseMergeAction,
   OrderDuplicateMergeAction,
@@ -32,12 +33,11 @@ import {
   SetDataMergeAction,
   SetSidebarMergeAction,
   SetVernacularMergeAction,
-  MergeTreeState,
 } from "goals/MergeDupGoal/Redux/MergeDupReduxTypes";
 import { StoreState } from "types";
-import { GoalType } from "types/goals";
-import { maxNumSteps } from "types/goalUtilities";
 import { StoreStateDispatch } from "types/Redux/actions";
+import { maxNumSteps } from "types/goalUtilities";
+import { GoalType } from "types/goals";
 
 // Action Creators
 
@@ -315,8 +315,7 @@ export function mergeDefinitionIntoSense(
   } else {
     const oldText = sense.definitions[defIndex].text;
     if (!oldText.split(sep).includes(def.text)) {
-      const newText = `${oldText}${sep}${def.text}`;
-      sense.definitions[defIndex].text = newText;
+      sense.definitions[defIndex].text = `${oldText}${sep}${def.text}`;
     }
   }
 }

@@ -1,12 +1,13 @@
 import { Button, TextField, Typography } from "@material-ui/core";
 import React from "react";
 import { LocalizeContextProps, withLocalize } from "react-localize-redux";
+
 import CharacterReplaceDialog from "goals/CharInventoryCreation/components/CharacterDetail/FindAndReplace/CharacterReplaceDialog";
 
 interface FindAndReplaceProps {
   initialFindValue: string;
   allWords: string[];
-  findAndReplace: (findValue: string, replaceValue: string) => void;
+  findAndReplace: (findValue: string, replaceValue: string) => Promise<void>;
 }
 
 interface FindAndReplaceState {
@@ -90,12 +91,12 @@ export class FindAndReplace extends React.Component<
           handleCancel={() => {
             this.setState({ warningDialogOpen: false });
           }}
-          handleAccept={() => {
-            this.setState({ warningDialogOpen: false });
-            this.props.findAndReplace(
+          handleAccept={async () => {
+            await this.props.findAndReplace(
               this.state.findValue,
               this.state.replaceValue
             );
+            this.setState({ warningDialogOpen: false });
           }}
         />
       </React.Fragment>

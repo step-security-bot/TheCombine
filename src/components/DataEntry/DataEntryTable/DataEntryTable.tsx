@@ -13,20 +13,23 @@ import {
   SemanticDomain,
   Sense,
   Word,
+  WritingSystem,
 } from "api/models";
 import * as backend from "backend";
 import NewEntry from "components/DataEntry/DataEntryTable/NewEntry/NewEntry";
 import RecentEntry from "components/DataEntry/DataEntryTable/RecentEntry/RecentEntry";
 import { getFileNameForWord } from "components/Pronunciations/AudioRecorder";
 import Recorder from "components/Pronunciations/Recorder";
+import { newWritingSystem } from "types/project";
 import theme from "types/theme";
-import { newSense, simpleWord } from "types/word";
+import { firstGlossText, newSense, simpleWord } from "types/word";
 
 export const exitButtonId = "exit-to-domain-tree";
 
 interface DataEntryTableProps {
   semanticDomain: SemanticDomain;
-  displaySemanticDomainView: (isGettingSemanticDomain: boolean) => void;
+  treeIsOpen: boolean;
+  openTree: () => void;
   getWordsFromBackend: () => Promise<Word[]>;
   showExistingData: () => void;
   isSmallScreen: boolean;
@@ -44,7 +47,8 @@ interface DataEntryTableState {
   recentlyAddedWords: WordAccess[];
   isReady: boolean;
   suggestVerns: boolean;
-  analysisLang: string;
+  analysisLang: WritingSystem;
+  vernacularLang: WritingSystem;
   defunctWordIds: string[];
   isFetchingFrontier: boolean;
 }
@@ -66,8 +70,7 @@ export function addSemanticDomainToSense(
     };
     const updatedSenses = [...existingWord.senses];
     updatedSenses.splice(senseIndex, 1, updatedSense);
-    const updatedWord: Word = { ...existingWord, senses: updatedSenses };
-    return updatedWord;
+    return { ...existingWord, senses: updatedSenses };
   }
 }
 
@@ -97,7 +100,8 @@ export class DataEntryTable extends React.Component<
       recentlyAddedWords: [],
       isReady: false,
       suggestVerns: true,
-      analysisLang: "en",
+      analysisLang: newWritingSystem("en", "English"),
+      vernacularLang: newWritingSystem("qaa", "Unknown"),
       defunctWordIds: [],
       isFetchingFrontier: false,
     };
@@ -112,14 +116,19 @@ export class DataEntryTable extends React.Component<
     await this.getProjectSettings();
   }
 
+  componentDidUpdate(prevProps: DataEntryTableProps) {
+    if (this.props.treeIsOpen && !prevProps.treeIsOpen) {
+      this.exitGracefully();
+    }
+  }
+
   async getProjectSettings() {
     const proj = await backend.getProject();
     const suggestVerns = proj.autocompleteSetting === AutocompleteSetting.On;
-    let analysisLang = "en";
-    if (proj.analysisWritingSystems?.length > 0) {
-      analysisLang = proj.analysisWritingSystems[0].bcp47;
-    }
-    this.setState({ analysisLang, suggestVerns });
+    const analysisLang =
+      proj.analysisWritingSystems[0] ?? newWritingSystem("en", "English");
+    const vernacularLang = proj.vernacularWritingSystem;
+    this.setState({ analysisLang, vernacularLang, suggestVerns });
   }
 
   /** Finished with this page of words, select new semantic domain */
@@ -146,12 +155,12 @@ export class DataEntryTable extends React.Component<
     insertIndex?: number,
     ignoreRecent?: boolean
   ) {
-    wordToAdd.note.language = this.state.analysisLang;
+    wordToAdd.note.language = this.state.analysisLang.bcp47;
     const addedWord = await backend.createWord(wordToAdd);
     if (addedWord.id === "Duplicate") {
       alert(
         this.props.translate("addWords.wordInDatabase") +
-          `: ${wordToAdd.vernacular}, ${wordToAdd.senses[0].glosses[0].def}`
+          `: ${wordToAdd.vernacular}, ${firstGlossText(wordToAdd.senses[0])}`
       );
       return;
     }
@@ -255,7 +264,7 @@ export class DataEntryTable extends React.Component<
       this.props.semanticDomain,
       existingWord,
       gloss,
-      this.state.analysisLang
+      this.state.analysisLang.bcp47
     );
     await this.updateWordBackAndFront(
       updatedWord,
@@ -380,7 +389,7 @@ export class DataEntryTable extends React.Component<
       await this.updateVernacular(oldWord, newVern);
     } else {
       // This is a modification that has to be retracted and replaced with a new entry
-      const word = simpleWord(newVern, oldSense.glosses[0].def);
+      const word = simpleWord(newVern, firstGlossText(oldSense));
       word.id = "";
       await this.undoRecentEntry(entryIndex).then(async () => {
         await this.addNewWord(word, [], entryIndex);
@@ -417,7 +426,7 @@ export class DataEntryTable extends React.Component<
     if (newText !== oldNote.text) {
       const updatedNote: Note = { ...oldNote, text: newText };
       const updatedWord: Word = { ...oldWord, note: updatedNote };
-      this.updateWordBackAndFrontSimple(updatedWord);
+      await this.updateWordBackAndFrontSimple(updatedWord);
     }
   }
 
@@ -492,6 +501,27 @@ export class DataEntryTable extends React.Component<
       .then(async () => await this.updateExisting());
   }
 
+  exitGracefully() {
+    // Check if there is a new word, but user exited without pressing enter
+    if (this.refNewEntry.current) {
+      const newEntry = this.refNewEntry.current.state.newEntry;
+      if (!newEntry.senses.length) {
+        newEntry.senses.push(
+          newSense(undefined, undefined, this.props.semanticDomain)
+        );
+      }
+      const newEntryAudio = this.refNewEntry.current.state.audioFileURLs;
+      if (newEntry?.vernacular) {
+        this.addNewWord(newEntry, newEntryAudio, undefined, true);
+        this.refNewEntry.current.resetState();
+      }
+    }
+
+    // Reset everything
+    this.props.hideQuestions();
+    this.setState({ defunctWordIds: [], recentlyAddedWords: [] });
+  }
+
   render() {
     return (
       <form
@@ -564,6 +594,7 @@ export class DataEntryTable extends React.Component<
                     }
                   }}
                   analysisLang={this.state.analysisLang}
+                  vernacularLang={this.state.vernacularLang}
                 />
               )}
             </Grid>
@@ -587,6 +618,7 @@ export class DataEntryTable extends React.Component<
               setIsReadyState={(isReady: boolean) => this.setState({ isReady })}
               recorder={this.recorder}
               analysisLang={this.state.analysisLang}
+              vernacularLang={this.state.vernacularLang}
             />
           </Grid>
         </Grid>
@@ -612,30 +644,7 @@ export class DataEntryTable extends React.Component<
               style={{ marginTop: theme.spacing(2) }}
               endIcon={<ExitToApp />}
               tabIndex={-1}
-              onClick={() => {
-                // Check if there is a new word, but the user clicked complete instead of pressing enter
-                if (this.refNewEntry.current) {
-                  const newEntry = this.refNewEntry.current.state.newEntry;
-                  if (!newEntry.senses.length) {
-                    newEntry.senses.push(
-                      newSense(undefined, undefined, this.props.semanticDomain)
-                    );
-                  }
-                  const newEntryAudio =
-                    this.refNewEntry.current.state.audioFileURLs;
-                  if (newEntry && newEntry.vernacular) {
-                    this.addNewWord(newEntry, newEntryAudio, undefined, true);
-                    this.refNewEntry.current.resetState();
-                  }
-                }
-
-                // Reset everything
-                this.props.hideQuestions();
-                this.setState({ defunctWordIds: [], recentlyAddedWords: [] });
-
-                // Reveal the TreeView, hiding DataEntry
-                this.props.displaySemanticDomainView(true);
-              }}
+              onClick={this.props.openTree}
             >
               <Translate id="buttons.complete" />
             </Button>
