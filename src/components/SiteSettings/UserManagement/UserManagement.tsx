@@ -2,14 +2,13 @@ import { Grid } from "@material-ui/core";
 import React from "react";
 import { Translate } from "react-localize-redux";
 import Modal from "react-modal";
-import { toast, ToastContainer } from "react-toastify";
-//styles the ToastContainer so that it appears on the upper right corner with the message.
-import "react-toastify/dist/ReactToastify.min.css";
+import { toast } from "react-toastify";
 
 import { User } from "api/models";
 import { avatarSrc, deleteUser, getAllUsers } from "backend";
 import ConfirmDeletion from "components/SiteSettings/UserManagement/ConfirmDeletion";
 import UserList from "components/SiteSettings/UserManagement/UserList";
+import { UpperRightToastContainer } from "components/Toast/UpperRightToastContainer";
 
 const customStyles = {
   content: {
@@ -43,9 +42,9 @@ class UserManagement extends React.Component<UserProps, UserState> {
     };
   }
 
-  componentDidMount() {
+  async componentDidMount() {
     Modal.setAppElement("body");
-    this.populateUsers();
+    await this.populateUsers();
   }
 
   handleOpenModal = (user: User) => {
@@ -56,15 +55,15 @@ class UserManagement extends React.Component<UserProps, UserState> {
     this.setState({ showModal: false });
   };
 
-  componentDidUpdate() {
+  async componentDidUpdate() {
     if (this.state.userToEdit !== this.state.prevUserToEdit) {
-      this.populateUsers();
+      await this.populateUsers();
       this.setState((prevState) => ({ prevUserToEdit: prevState.userToEdit }));
     }
   }
 
-  private populateUsers() {
-    getAllUsers()
+  private async populateUsers() {
+    await getAllUsers()
       .then((allUsers) => {
         this.setState({ allUsers });
         const userAvatar = this.state.userAvatar;
@@ -77,18 +76,21 @@ class UserManagement extends React.Component<UserProps, UserState> {
           this.setState({ userAvatar });
         });
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error(err);
+        toast.error(<Translate id="siteSettings.populateUsers.toastFailure" />);
+      });
   }
 
   deleteUser(userId: string) {
     deleteUser(userId)
       .then(() => {
-        toast(<Translate id="siteSettings.deleteUser.toastSuccess" />);
+        toast.success(<Translate id="siteSettings.deleteUser.toastSuccess" />);
         this.populateUsers();
       })
       .catch((err) => {
         console.error(err);
-        toast(<Translate id="siteSettings.deleteUser.toastFailure" />);
+        toast.error(<Translate id="siteSettings.deleteUser.toastFailure" />);
       });
     this.handleCloseModal();
   }
@@ -102,23 +104,13 @@ class UserManagement extends React.Component<UserProps, UserState> {
             userAvatar={this.state.userAvatar}
             handleOpenModal={(user: User) => this.handleOpenModal(user)}
           />
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-          />
+          <UpperRightToastContainer />
         </Grid>
 
         <Modal
           isOpen={this.state.showModal}
           style={customStyles}
-          shouldCloseOnOverlayClick={true}
+          shouldCloseOnOverlayClick
           onRequestClose={this.handleCloseModal}
         >
           <ConfirmDeletion
