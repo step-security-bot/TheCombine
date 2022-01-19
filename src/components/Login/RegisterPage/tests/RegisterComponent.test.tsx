@@ -1,4 +1,3 @@
-import React from "react";
 import ReactDOM from "react-dom";
 import renderer, {
   ReactTestInstance,
@@ -8,7 +7,7 @@ import renderer, {
 import Register from "components/Login/RegisterPage/RegisterComponent";
 
 jest.mock("@matt-block/react-recaptcha-v2", () => () => (
-  <div id="mockRecaptcha">Recaptcha'ed</div>
+  <div id="mockRecaptcha">Recaptcha</div>
 ));
 
 jest.mock("backend", () => ({
