@@ -1,5 +1,5 @@
 import { TextField } from "@material-ui/core";
-import { Autocomplete } from "@material-ui/lab";
+import { Autocomplete, AutocompleteCloseReason } from "@material-ui/lab";
 import React from "react";
 import { Key } from "ts-key-enum";
 
@@ -12,6 +12,7 @@ interface VernWithSuggestionsProps {
   vernInput?: React.RefObject<HTMLDivElement>;
   updateVernField: (newValue: string, openDialog?: boolean) => void;
   onBlur: () => void;
+  onClose?: (e: React.ChangeEvent<{}>, reason: AutocompleteCloseReason) => void;
   suggestedVerns?: string[];
   handleEnterAndTab: (e: React.KeyboardEvent) => void;
   vernacularLang: WritingSystem;
@@ -34,8 +35,9 @@ export default class VernWithSuggestions extends React.Component<VernWithSuggest
       <React.Fragment>
         <Autocomplete
           id={this.props.textFieldId}
-          freeSolo
           disabled={this.props.isDisabled}
+          // freeSolo allows use of a typed entry not available as a drop-down option
+          freeSolo
           value={this.props.vernacular}
           options={this.props.suggestedVerns ? this.props.suggestedVerns : []}
           onBlur={this.props.onBlur}
@@ -55,6 +57,7 @@ export default class VernWithSuggestions extends React.Component<VernWithSuggest
               this.props.handleEnterAndTab(e);
             }
           }}
+          onClose={this.props.onClose}
           renderInput={(params) => (
             <TextField
               {...params}
