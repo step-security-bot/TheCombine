@@ -1,0 +1,27 @@
+---
+################################################
+# Profile specific configuration items
+#
+# Profile: dev
+################################################
+
+charts:
+  thecombine:
+    aws-login:
+      enabled: false
+
+    frontend:
+      configCaptchaRequired: "true"
+      configCaptchaSiteKey: "6LdBKdIeAAAAAD6hEBDPa0zUMitfVfQvpkgjehNV"
+
+    global:
+      imageRegistry: ""
+      imagePullPolicy: Never
+      awsS3Location: dev.thecombine.app
+
+    ingressClass: nginx
+    imagePullPolicy: Never
+
+    certManager:
+      enabled: true
+      certIssuer: self-signed
