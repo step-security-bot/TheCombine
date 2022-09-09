@@ -26,6 +26,7 @@ charts:
     global:
       awsS3Location: prod.thecombine.app
       pullSecretName: None
+    tlsSecretName: thecombine-app-tls
     certManager:
       enabled: false
   cert-proxy-server:
