@@ -30,10 +30,4 @@ export interface SemanticDomain {
    * @memberof SemanticDomain
    */
   id: string;
-  /**
-   *
-   * @type {string}
-   * @memberof SemanticDomain
-   */
-  description: string;
 }
