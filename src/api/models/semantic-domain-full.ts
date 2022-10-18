@@ -23,6 +23,18 @@ export interface SemanticDomainFull {
    * @type {string}
    * @memberof SemanticDomainFull
    */
+  mongoId?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof SemanticDomainFull
+   */
+  guid: string;
+  /**
+   *
+   * @type {string}
+   * @memberof SemanticDomainFull
+   */
   name: string;
   /**
    *
@@ -30,6 +42,12 @@ export interface SemanticDomainFull {
    * @memberof SemanticDomainFull
    */
   id: string;
+  /**
+   *
+   * @type {string}
+   * @memberof SemanticDomainFull
+   */
+  lang: string;
   /**
    *
    * @type {string}

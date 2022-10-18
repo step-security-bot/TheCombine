@@ -1,41 +1,47 @@
 import {
   SemanticDomain,
+  SemanticDomainFull,
   SemanticDomainTreeNode,
-  SemanticDomainWithSubdomains,
 } from "api/models";
+import { Bcp47Code } from "types/writingSystem";
 
-export function newSemanticDomain(id = "", name = ""): SemanticDomain {
-  return { id, name };
+export function newSemanticDomain(
+  id = "",
+  name = "",
+  lang = Bcp47Code.Default as string
+): SemanticDomainFull {
+  return { id, name, guid: "", questions: [], description: "", lang };
 }
 
 export function newSemanticDomainTreeNode(
   id = "",
-  name = ""
+  name = "",
+  lang = Bcp47Code.Default as string
 ): SemanticDomainTreeNode {
   return {
-    node: newSemanticDomain(id, name),
-    parent: newSemanticDomain(),
-    previous: newSemanticDomain(),
-    next: newSemanticDomain(),
+    parent: undefined,
+    previous: undefined,
+    next: undefined,
     children: [],
+    id,
+    name,
+    lang,
+    guid: "",
   };
 }
 
-export class TreeSemanticDomain implements SemanticDomainWithSubdomains {
-  id: string;
-  name: string;
-  description = "";
-  subdomains: TreeSemanticDomain[] = [];
-
-  // Additional fields not in SemanticDomainWithSubdomains
-  parentId?: string;
-  childIds: string[] = [];
-  questions: string[] = [];
-
-  constructor(id = "", name = "") {
-    this.id = id;
-    this.name = name;
-  }
+export function semDomFromTreeNode(
+  node: SemanticDomainTreeNode
+): SemanticDomainFull {
+  const dom = newSemanticDomain(node.id, node.name, node.lang);
+  return { ...dom, guid: node.guid };
 }
 
-export type DomainMap = Record<string, TreeSemanticDomain>;
+export function treeNodeFromSemDom(
+  dom: SemanticDomain
+): SemanticDomainTreeNode {
+  const node = newSemanticDomainTreeNode(dom.id, dom.name, dom.lang);
+  return { ...node, guid: dom.guid };
+}
+
+export type TreeNodeMap = Record<string, SemanticDomainTreeNode>;

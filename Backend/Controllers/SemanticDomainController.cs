@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using BackendFramework.Interfaces;
 using BackendFramework.Models;
@@ -13,55 +12,35 @@ namespace BackendFramework.Controllers
     [Route("v1/semanticdomain")]
     public class SemanticDomainController : Controller
     {
-        private readonly IProjectRepository _projRepo;
-        private readonly IPermissionService _permissionService;
-        private readonly ISemanticDomainService _semDomService;
+        private readonly ISemanticDomainRepository _semDomRepo;
 
-        public SemanticDomainController(
-            IProjectRepository projRepo, ISemanticDomainService semDomService, IPermissionService permissionService)
+        public SemanticDomainController(ISemanticDomainRepository semDomRepo)
         {
-            _projRepo = projRepo;
-            _permissionService = permissionService;
-            _semDomService = semDomService;
+            _semDomRepo = semDomRepo;
         }
 
         /// <summary> Returns <see cref="SemanticDomainFull"/> with specified id and in specified language </summary>
-        [HttpGet("{lang}/domain/{id}", Name = "GetSemanticDomainFull")]
+        [HttpGet("domainFull", Name = "GetSemanticDomainFull")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SemanticDomainFull))]
-        public IActionResult GetSemanticDomainFull(string id, string lang)
+        public async Task<IActionResult> GetSemanticDomainFull(string id, string lang)
         {
-            return Ok(new SemanticDomainFull { Name = "Domain API in development" });
+            return Ok(await _semDomRepo.GetSemanticDomainFull(id, lang));
         }
 
-        /// <summary> Returns <see cref="SemanticDomainFull"/> with specified id and in specified language </summary>
-        [HttpGet("{lang}/node/{id}", Name = "GetSemanticDomainTreeNode")]
+        /// <summary> Returns <see cref="SemanticDomainTreeNode"/> with specified id and in specified language </summary>
+        [HttpGet("domainTreeNode", Name = "GetSemanticDomainTreeNode")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SemanticDomainTreeNode))]
-        public IActionResult GetSemanticDomainTreeNode(string id, string lang)
+        public async Task<IActionResult> GetSemanticDomainTreeNode(string id, string lang)
         {
-            var node = new SemanticDomain { Name = "Domain API in development" };
-            return Ok(new SemanticDomainTreeNode { Node = node });
+            return Ok(await _semDomRepo.GetSemanticDomainTreeNode(id, lang));
         }
 
-        /// <summary>
-        /// UNUSED: Returns tree of <see cref="SemanticDomainWithSubdomains"/> for specified <see cref="Project"/>
-        /// </summary>
-        [AllowAnonymous]
-        [HttpGet("{projectId}/semanticdomains", Name = "GetSemDoms")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<SemanticDomainWithSubdomains>))]
-        public async Task<IActionResult> GetSemDoms(string projectId)
+        /// <summary> Returns <see cref="SemanticDomainTreeNode"/> with specified name and in specified language </summary>
+        [HttpGet("domainByName", Name = "GetSemanticDomainTreeNodeByName")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(SemanticDomainTreeNode))]
+        public async Task<IActionResult> GetSemanticDomainTreeNodeByName(string name, string lang)
         {
-            if (!await _permissionService.HasProjectPermission(HttpContext, Permission.WordEntry))
-            {
-                return Forbid();
-            }
-
-            var proj = await _projRepo.GetProject(projectId);
-            if (proj is null)
-            {
-                return NotFound(projectId);
-            }
-            var result = _semDomService.ParseSemanticDomains(proj);
-            return Ok(result);
+            return Ok(await _semDomRepo.GetSemanticDomainTreeNodeByName(name, lang));
         }
     }
 }

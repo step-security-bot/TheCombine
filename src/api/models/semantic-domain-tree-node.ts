@@ -22,28 +22,52 @@ import { SemanticDomain } from "./semantic-domain";
 export interface SemanticDomainTreeNode {
   /**
    *
-   * @type {SemanticDomain}
+   * @type {string}
    * @memberof SemanticDomainTreeNode
    */
-  node: SemanticDomain;
+  mongoId?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof SemanticDomainTreeNode
+   */
+  lang: string;
+  /**
+   *
+   * @type {string}
+   * @memberof SemanticDomainTreeNode
+   */
+  guid: string;
+  /**
+   *
+   * @type {string}
+   * @memberof SemanticDomainTreeNode
+   */
+  name: string;
+  /**
+   *
+   * @type {string}
+   * @memberof SemanticDomainTreeNode
+   */
+  id: string;
   /**
    *
    * @type {SemanticDomain}
    * @memberof SemanticDomainTreeNode
    */
-  parent: SemanticDomain;
+  previous?: SemanticDomain;
   /**
    *
    * @type {SemanticDomain}
    * @memberof SemanticDomainTreeNode
    */
-  previous: SemanticDomain;
+  next?: SemanticDomain;
   /**
    *
    * @type {SemanticDomain}
    * @memberof SemanticDomainTreeNode
    */
-  next: SemanticDomain;
+  parent?: SemanticDomain;
   /**
    *
    * @type {Array<SemanticDomain>}
